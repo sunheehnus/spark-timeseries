@@ -33,11 +33,12 @@
     <java.version>1.7</java.version>
     <scala.minor.version>2.10</scala.minor.version>
     <scala.complete.version>${scala.minor.version}.4</scala.complete.version>
-    <spark.version>1.3.1</spark.version>
+    <spark.version>1.4.0</spark.version>
     <breeze.version>0.10</breeze.version>
   </properties>
 
   <build>
+  <pluginManagement> 
     <plugins>
       <plugin>
         <groupId>net.alchim31.maven</groupId>
@@ -219,6 +220,7 @@
         </dependencies>
       </plugin>
     </plugins>
+    </pluginManagement> 
   </build>
 
   <dependencies>
@@ -319,6 +321,18 @@
       <artifactId>commons-math3</artifactId>
       <version>3.4.1</version>
     </dependency>
+    <dependency>
+		<groupId>org.apache.commons</groupId>
+		<artifactId>commons-pool2</artifactId>
+		<version>2.0</version>
+	</dependency>
+	<dependency>
+		<groupId>redis.clients</groupId>
+		<artifactId>jedis</artifactId>
+		<version>2.7.2</version>
+		<type>jar</type>
+		<scope>compile</scope>
+	</dependency>
   </dependencies>
 
   <profiles>
