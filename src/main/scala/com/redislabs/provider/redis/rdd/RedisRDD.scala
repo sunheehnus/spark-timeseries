@@ -18,6 +18,9 @@ import com.cloudera.sparkts.DateTimeIndex._
 
 import com.github.nscala_time.time.Imports._
 
+import breeze.linalg._
+import breeze.stats._
+
 class RedisTimeSeriesRDD(prev: RDD[String],
                          index: DateTimeIndex,
                          startTime: DateTime = null,
@@ -74,11 +77,11 @@ class RedisTimeSeriesRDD(prev: RDD[String],
           endTimeKeys.map {
             x =>
               {
-                val zsetmap = jedis.zrangeByScoreWithScores(x, st, et).map(x => (x.getScore.toLong, x.getElement.toDouble)).toMap
+                val zsetmap = jedis.zrangeByScoreWithScores(x, st, et).map(x => (x.getScore.toLong, x.getElement.substring(x.getElement.indexOf('_') + 1).toDouble)).toMap
                 if (f == null)
-                  (x, miArr.map(i => (zsetmap.get(i).getOrElse(Double.NaN))).toVector)
+                  (x, new DenseVector(miArr.map(i => (zsetmap.get(i).getOrElse(Double.NaN)))))
                 else
-                  (x, f(miArr.map(i => (zsetmap.get(i).getOrElse(Double.NaN))).toVector))
+                  (x, f(new DenseVector(miArr.map(i => (zsetmap.get(i).getOrElse(Double.NaN))))))
               }
           }
         }
@@ -116,9 +119,9 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     slice(new DateTime(start), new DateTime(end))
   }
   
-  //def fill(method: String): RedisTimeSeriesRDD = {
-    //mapSeries(UnivariateTimeSeries.fillts(_, method))
-  //}
+  def fill(method: String): RedisTimeSeriesRDD = {
+    mapSeries(UnivariateTimeSeries.fillts(_, method))
+  }
   
   def mapSeries[U](f: (Vector[Double]) => Vector[Double]): RedisTimeSeriesRDD = {
     new RedisTimeSeriesRDD(prev, index, startTime, endTime, f)

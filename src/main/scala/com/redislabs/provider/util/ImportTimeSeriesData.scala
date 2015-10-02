@@ -32,17 +32,9 @@ object ImportTimeSeriesData {
       mat(i to i, ::) := new DenseVector[Double](vals)
     })
     (labels, dts, mat)
-    /*
-    (0 until samples.head._2.length).map(i => {
-      val vals = mat(::, i to i).toArray
-      vals.foreach(println)
-      //val parallRDD = sc.parallelize(0 to samples.length)
-      //parallRDD.map(i => (dts(i), vals(i))).foreach(println)
-    })
-    */
   }
   def ImportToRedisServer(dir: String, prefix: String, sc: SparkContext, redisNode: (String, Int)) {
-    val dts_mats = sc.wholeTextFiles(dir).map {
+    sc.wholeTextFiles(dir).map {
       case (path, text) => RedisWrite(text, prefix + path.split('/').last)
     }.collect.foreach { x =>
       {
@@ -51,7 +43,7 @@ object ImportTimeSeriesData {
         val mat = x._3
         (0 until labels.size).foreach(i => {
           val host = getHost(labels(i), redisNode)
-          setZset(host, labels(i), mat(::, i to i).toArray.zip(dts).map((x) => (x._1.toString, x._2.toString)).iterator)
+          setZset(host, labels(i), (for (j <- 0 to dts.length - 1) yield (j + "_" + mat(j, i), dts(j).toString)).iterator)
         })
       }
     }
