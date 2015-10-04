@@ -35,7 +35,7 @@ object ImportTimeSeriesData {
   }
   def ImportToRedisServer(dir: String, prefix: String, sc: SparkContext, redisNode: (String, Int)) {
     sc.wholeTextFiles(dir).map {
-      case (path, text) => RedisWrite(text, prefix + path.split('/').last)
+      case (path, text) => RedisWrite(text, prefix + "_" + path.split('/').last)
     }.collect.foreach { x =>
       {
         val labels = x._1
