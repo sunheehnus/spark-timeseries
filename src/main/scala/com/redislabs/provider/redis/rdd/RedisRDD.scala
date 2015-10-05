@@ -74,14 +74,27 @@ class RedisTimeSeriesRDD(prev: RDD[String],
           val zsetKeys = filterKeysByType(jedis, x._2, "zset")
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
+          val client = new Client(x._1._1, x._1._2)
           endTimeKeys.map {
             x =>
               {
-                val zsetmap = jedis.zrangeByScoreWithScores(x, st, et).map(x => (x.getScore.toLong, x.getElement.substring(x.getElement.indexOf('_') + 1).toDouble)).toMap
+                val arr = new Array[Double](index.size)
+                for (i <- 0 until index.size) {
+                  arr(i) = Double.NaN
+                }
+                client.zrangeByScoreWithScores(x, st, et)
+                val list = client.getMultiBulkReply
+                val it = list.iterator
+                while (it.hasNext) {
+                  val elem = it.next
+                  val time = it.next.toLong
+                  arr(index.locAtDateTime(time)) = elem.substring(elem.indexOf('_') + 1).toDouble
+                }
+                //val zsetmap = jedis.zrangeByScoreWithScores(x, st, et).map(x => (x.getScore.toLong, x.getElement.substring(x.getElement.indexOf('_') + 1).toDouble)).toMap
                 if (f == null)
-                  (x, new DenseVector(miArr.map(i => (zsetmap.get(i).getOrElse(Double.NaN)))))
+                  (x, new DenseVector(arr))
                 else
-                  (x, f(new DenseVector(miArr.map(i => (zsetmap.get(i).getOrElse(Double.NaN))))))
+                  (x, f(new DenseVector(arr)))
               }
           }
         }

@@ -163,7 +163,8 @@ object Main {
   }
   
   def main(args: Array[String]) {
-    //Generate("/home/hadoop/RedisLabs/TEST")
+    val path = "/home/hadoop/RedisLabs/TEST"
+    Generate(path)
     
     val conf = new SparkConf().setAppName("test").setMaster("local")
     val sc = new SparkContext(conf)
@@ -171,7 +172,7 @@ object Main {
     val writer = new PrintWriter(new File("result.out"))
     
     (1 to 16).foreach{ i => {
-      TEST(sc, writer, 8, "TEST " + i.toString, "/home/hadoop/RedisLabs/TEST/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 7000)) 
+      TEST(sc, writer, 8, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379)) 
     }}
     
     writer.close
