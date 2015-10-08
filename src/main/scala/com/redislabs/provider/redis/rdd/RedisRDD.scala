@@ -23,6 +23,7 @@ import breeze.stats._
 
 class RedisTimeSeriesRDD(prev: RDD[String],
                          index: DateTimeIndex,
+                         pattern: String = null,
                          startTime: DateTime = null,
                          endTime: DateTime = null,
                          f: (Vector[Double]) => Vector[Double] = null)
@@ -39,6 +40,12 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     fetchTimeSeriesData(nodes, keys)
   }
 
+  /**
+   * @param jedis
+   * @param keys
+   * @param startTime
+   * @return keys whose start_time <= startTime
+   */
   private def filterKeysByStartTime(jedis: Jedis, keys: Array[String], startTime: DateTime): Array[String] = {
     if (startTime == null)
       return keys
@@ -51,6 +58,12 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     (keys).zip(dts).filter(x => (x._2 <= st)).map(x => x._1)
   }
 
+  /**
+   * @param jedis
+   * @param keys
+   * @param endTime
+   * @return keys whose end_time >= endTime
+   */
   private def filterKeysByEndTime(jedis: Jedis, keys: Array[String], endTime: DateTime): Array[String] = {
     if (endTime == null)
       return keys
@@ -75,26 +88,41 @@ class RedisTimeSeriesRDD(prev: RDD[String],
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
           val client = new Client(x._1._1, x._1._2)
-          endTimeKeys.map {
+          endTimeKeys.flatMap {
             x =>
               {
-                val arr = new Array[Double](index.size)
-                for (i <- 0 until index.size) {
-                  arr(i) = Double.NaN
-                }
-                client.zrangeByScoreWithScores(x, st, et)
-                val list = client.getMultiBulkReply
-                val it = list.iterator
-                while (it.hasNext) {
-                  val elem = it.next
-                  val time = it.next.toLong
-                  arr(index.locAtDateTime(time)) = elem.substring(elem.indexOf('_') + 1).toDouble
-                }
-                //val zsetmap = jedis.zrangeByScoreWithScores(x, st, et).map(x => (x.getScore.toLong, x.getElement.substring(x.getElement.indexOf('_') + 1).toDouble)).toMap
-                if (f == null)
-                  (x, new DenseVector(arr))
-                else
-                  (x, f(new DenseVector(arr)))
+                val prefixStartPos = x.indexOf("_RedisTS_") + 9
+                val prefixEndPos = x.indexOf("_RedisTS_", prefixStartPos)
+                val prefix = x.substring(prefixStartPos, prefixEndPos)
+                val cols = x.substring(prefixEndPos + 9).split(",").map(prefix + _)
+                
+                val keysWithCols = if (pattern != null) cols.zip(0 until cols.size).filter(x => x._1.matches(pattern)) else cols.zip(0 until cols.size)
+                
+                if (keysWithCols.size != 0)
+                  client.zrangeByScoreWithScores(x, st, et)
+                val list = if (keysWithCols.size != 0) client.getMultiBulkReply else null
+                
+                (0 until keysWithCols.size).map{
+                  i => {
+                    val key = keysWithCols(i)._1
+                    val col = keysWithCols(i)._2
+                    val arr = new Array[Double](index.size)
+                    for (i <- 0 until index.size) {
+                      arr(i) = Double.NaN
+                    }
+                    
+                    val it = list.iterator
+                    while (it.hasNext) {
+                      val elem = it.next
+                      val time = it.next.toLong
+                      arr(index.locAtDateTime(time)) = elem.substring(elem.indexOf('_') + 1).split(",")(col).toDouble
+                    }
+                    if (f == null)
+                      (key, new DenseVector(arr))
+                    else
+                      (key, f(new DenseVector(arr)))
+                  }   
+                }          
               }
           }
         }
@@ -116,17 +144,19 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   //def returnRates(): RedisTimeSeriesRDD = {
     //mapSeries(vec => UnivariateTimeSeries.price2ret(vec, 1), index.islice(1, index.size))
   //}
+  def filterKeys(keyPattern: String): RedisTimeSeriesRDD = {
+    new RedisTimeSeriesRDD(prev, index, keyPattern, startTime, endTime, f)
+  }
   
   def filterStartingBefore(dt: DateTime): RedisTimeSeriesRDD = {
-    new RedisTimeSeriesRDD(prev, index, dt, endTime, f)
+    new RedisTimeSeriesRDD(prev, index, pattern, dt, endTime, f)
   }
   def filterEndingAfter(dt: DateTime): RedisTimeSeriesRDD = {
-    new RedisTimeSeriesRDD(prev, index, startTime, dt, f)
+    new RedisTimeSeriesRDD(prev, index, pattern, startTime, dt, f)
   }
   
-  
   def slice(start: DateTime, end: DateTime): RedisTimeSeriesRDD = {
-    new RedisTimeSeriesRDD(prev, index.slice(start, end), startTime, endTime, f) 
+    new RedisTimeSeriesRDD(prev, index.slice(start, end), pattern, startTime, endTime, f) 
   }
   def slice(start: Long, end: Long): RedisTimeSeriesRDD = {
     slice(new DateTime(start), new DateTime(end))
@@ -137,20 +167,16 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   }
   
   def mapSeries[U](f: (Vector[Double]) => Vector[Double]): RedisTimeSeriesRDD = {
-    new RedisTimeSeriesRDD(prev, index, startTime, endTime, f)
+    new RedisTimeSeriesRDD(prev, index, pattern, startTime, endTime, f)
   }
+  
   def mapSeries[U](f: (Vector[Double]) => Vector[Double], index: DateTimeIndex): RedisTimeSeriesRDD = {
-    new RedisTimeSeriesRDD(prev, index, startTime, endTime, f)
+    new RedisTimeSeriesRDD(prev, index, pattern, startTime, endTime, f)
   }
   
   //def seriesStats(): RDD[StatCounter] = {
     //map(kt => new StatCounter(kt._2.valuesIterator))
   //}
-
-  
-  def print() {
-    collect().foreach(println)
-  }
 }
 
 class RedisKeysRDD(sc: SparkContext,

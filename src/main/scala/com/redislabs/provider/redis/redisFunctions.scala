@@ -186,6 +186,7 @@ object SaveToRedis {
     val pipeline = jedis.pipelined
     arr.foreach(x => pipeline.zadd(zsetName, x._2.toDouble, x._1))
     pipeline.sync
+    jedis.close
   }
 }
 

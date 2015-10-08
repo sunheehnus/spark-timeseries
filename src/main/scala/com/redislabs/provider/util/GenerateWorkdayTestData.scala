@@ -9,44 +9,43 @@ import java.util._
  * @author sunheehnus
  */
 object GenerateWorkdayTestData {
-  def Generate(dir: String) {
+  def Generate(dir: String, testCnt: Int, testFileFloor: Int, testFileCeil: Int, startTime: String, endTime: String) {
     val rnd = new Random
-    val stMillis = new DateTime("1981-01-01", UTC).getMillis
-    val edMillis = new DateTime("2016-01-01", UTC).getMillis
-    (1 to 16).foreach{ i=> {
-      val time1 = stMillis + (rnd.nextLong.abs % (edMillis - stMillis))
-      val time2 = stMillis + (rnd.nextLong.abs % (edMillis - stMillis))
-      val _floor = nextBusinessDay(new DateTime(if (time1 > time2) time2 else time1, UTC)).toString
-      val _ceil = nextBusinessDay(new DateTime(if (time1 > time2) time1 else time2, UTC)).toString
-      val floor = _floor.toString.substring(0, _floor.toString.indexOf("T"))
-      val ceil = _ceil.toString.substring(0, _ceil.toString.indexOf("T"))
-      GenerateBetween(dir + "/TEST" + i.toString, floor, ceil, rnd.nextInt(16) + 1)
+    (1 to testCnt).foreach{ i=> {
+      GenerateBetween(dir + "/TEST" + i.toString, startTime, endTime, testFileFloor + rnd.nextInt(testFileCeil - testFileFloor) + 1)
     }}
   }
   def GenerateBetween(dir: String, startTime: String, endTime: String, fileNum: Int) {
     val folder = new File(dir)
     folder.mkdirs()
+    
     val rnd = new Random
     for (i <- 1 to fileNum) {
       val stMillis = new DateTime(startTime, UTC).getMillis
       val edMillis = new DateTime(endTime, UTC).getMillis
-      val time1 = stMillis + (rnd.nextLong.abs % (edMillis - stMillis))
-      val time2 = stMillis + (rnd.nextLong.abs % (edMillis - stMillis))
-      if (time1 > time2) GenerateWorkday(dir + "/test" + i.toString + ".csv", time2, time1, rnd.nextInt(15) + 1)
-      else GenerateWorkday(dir + "/test" + i.toString + ".csv", time1, time2, rnd.nextInt(15) + 1)
+      
+      var floor: String = ""
+      var ceil: String = ""
+      do {
+        val time1 = stMillis + (rnd.nextLong.abs % (edMillis - stMillis))
+        val time2 = stMillis + (rnd.nextLong.abs % (edMillis - stMillis))
+        floor = nextBusinessDay(new DateTime(if (time1 > time2) time2 else time1, UTC)).toString
+        floor = floor.substring(0, floor.indexOf("T"))
+        ceil = nextBusinessDay(new DateTime(if (time1 > time2) time1 else time2, UTC)).toString
+        ceil = ceil.substring(0, ceil.indexOf("T"))
+      } while (floor == ceil)
+      GenerateWorkday(dir + "/test" + i.toString + ".csv", floor, ceil, rnd.nextInt(15) + 1)
     }
   }
   
-  def GenerateWorkday(targetName: String, startTime: Long, endTime: Long, colNum: Int) {
+  def GenerateWorkday(targetName: String, startTime: String, endTime: String, colNum: Int) {
     val rnd = new Random
-    val _floor = nextBusinessDay(new DateTime(startTime, UTC)).toString
-    val _ceil = nextBusinessDay(new DateTime(endTime, UTC)).toString
-    val floor = new DateTime(_floor.toString.substring(0, _floor.toString.indexOf("T")), UTC)
-    val ceil = new DateTime(_ceil.toString.substring(0, _ceil.toString.indexOf("T")), UTC)
+    val floor = new DateTime(startTime, UTC)
+    val ceil = new DateTime(endTime, UTC)
     val dates: ArrayList[DateTime] = new ArrayList[DateTime]
     var dummy_day = floor
     while (dummy_day != ceil) {
-      if (rnd.nextInt(100) < 95) {
+      if (rnd.nextInt(100) < 90) {
         dates.add(dummy_day)
       }
       dummy_day = nextBusinessDay(dummy_day + 1.day)

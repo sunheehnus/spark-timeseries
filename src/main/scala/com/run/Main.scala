@@ -90,6 +90,10 @@ object Main {
   }
   
   def TEST(sc: SparkContext, writer: PrintWriter, cnt: Int, msg: String, dir: String, prefix: String, redisNode: (String, Int)) {
+    val jedis = new Jedis(redisNode._1, redisNode._2)
+    jedis.flushAll()
+    Thread sleep 8000
+    jedis.close
     ImportToRedisServer(dir, prefix, sc, redisNode)
     
     writer.write("****** "+ msg + " ******\n")
@@ -111,7 +115,7 @@ object Main {
     averageTime(Rdd, cmpRdd, cnt, writer)
 
     val filterRdd = Rdd.filter(_._1.endsWith("Col1"))
-    val cmpfilterRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*Col1").getRedisTimeSeriesRDD(dtIndex)
+    val cmpfilterRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col1")
     if (rddEquals(filterRdd, cmpfilterRdd)) {
       writer.write("Filter by Regex RDD TEST passed\n")
     }
@@ -157,22 +161,23 @@ object Main {
       return
     }
     averageTime(slicedRdd, cmpslicedRdd, cnt, writer)
-    
-    writer.write("\n\n\n\n\n")
+
+    writer.write("\n\n")
     writer.flush
   }
   
   def main(args: Array[String]) {
-    val path = "/home/hadoop/RedisLabs/TEST"
-    Generate(path)
     
+    val path = "/home/hadoop/RedisLabs/TEST"
+    Generate(path, 8, 512, 1024, "1981-01-01", "2016-01-01")
+
     val conf = new SparkConf().setAppName("test").setMaster("local")
     val sc = new SparkContext(conf)
     
     val writer = new PrintWriter(new File("result.out"))
     
-    (1 to 16).foreach{ i => {
-      TEST(sc, writer, 8, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379)) 
+    (1 to 8).foreach{ i => {
+      TEST(sc, writer, 4, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379)) 
     }}
     
     writer.close
