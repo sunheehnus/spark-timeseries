@@ -168,7 +168,7 @@ class TimeSeriesRDD(val index: DateTimeIndex, parent: RDD[(String, Vector[Double
    * @param end The end date for the slice (inclusive).
    */
   def slice(start: Long, end: Long): TimeSeriesRDD = {
-    slice(new DateTime(start), new DateTime(end))
+    slice(new DateTime(start, UTC), new DateTime(end, UTC))
   }
 
   /**

@@ -22,6 +22,7 @@ import breeze.linalg._
 import com.github.nscala_time.time.Imports._
 
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone.UTC
 
 /**
  * Internal utilities for dealing with 1-D time series.
@@ -112,9 +113,9 @@ private[sparkts] object TimeSeriesUtils {
       targetIndex: UniformDateTimeIndex,
       defaultValue: Double): Vector[Double] => Vector[Double] = {
     val startLoc = sourceIndex.frequency.difference(
-      new DateTime(sourceIndex.first), targetIndex.first)
+      new DateTime(sourceIndex.first, UTC), targetIndex.first)
     val endLoc = sourceIndex.frequency.difference(
-      new DateTime(sourceIndex.first), targetIndex.last) + 1
+      new DateTime(sourceIndex.first, UTC), targetIndex.last) + 1
 
     val safeStartLoc = math.max(startLoc, 0)
     val resultStartLoc = if (startLoc < 0) -startLoc else 0
@@ -141,7 +142,7 @@ private[sparkts] object TimeSeriesUtils {
       defaultValue: Double): Vector[Double] => Vector[Double] = {
     val startLoc = -targetIndex.locAtDateTime(sourceIndex.first)
     val startLocInSourceVec = math.max(0, startLoc)
-    val dtsRelevant = sourceIndex.instants.iterator.drop(startLocInSourceVec).map(new DateTime(_))
+    val dtsRelevant = sourceIndex.instants.iterator.drop(startLocInSourceVec).map(new DateTime(_, UTC))
 
     vec: Vector[Double] => {
       val vecRelevant = vec(startLocInSourceVec until vec.length).valuesIterator

@@ -138,7 +138,7 @@ class UniformDateTimeIndex(val start: Long, val periods: Int, val frequency: Fre
     uniform(frequency.advance(new DateTime(first, UTC), lower), upper - lower, frequency)
   }
 
-  override def dateTimeAtLoc(loc: Int): DateTime = frequency.advance(new DateTime(first), loc)
+  override def dateTimeAtLoc(loc: Int): DateTime = frequency.advance(new DateTime(first, UTC), loc)
 
   override def locAtDateTime(dt: DateTime): Int = {
     val loc = frequency.difference(new DateTime(first, UTC), dt)

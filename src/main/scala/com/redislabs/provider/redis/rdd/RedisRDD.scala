@@ -21,6 +21,8 @@ import com.github.nscala_time.time.Imports._
 import breeze.linalg._
 import breeze.stats._
 
+import org.joda.time.DateTimeZone.UTC
+
 class RedisTimeSeriesRDD(prev: RDD[String],
                          index: DateTimeIndex,
                          pattern: String = null,
@@ -159,7 +161,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     new RedisTimeSeriesRDD(prev, index.slice(start, end), pattern, startTime, endTime, f) 
   }
   def slice(start: Long, end: Long): RedisTimeSeriesRDD = {
-    slice(new DateTime(start), new DateTime(end))
+    slice(new DateTime(start, UTC), new DateTime(end, UTC))
   }
   
   def fill(method: String): RedisTimeSeriesRDD = {

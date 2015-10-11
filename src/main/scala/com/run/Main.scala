@@ -73,7 +73,7 @@ object Main {
     else {
       for (i <- 0 to (rdd1collect.size - 1).toInt) {
         val arr1 = rdd1collect(i)._2
-        val arr2 = rdd2collect.filter(x => {x._1.substring(x._1.indexOf("_") + 1) == rdd1collect(i)._1})(0)._2
+        val arr2 = rdd2collect.filter(x => {x._1 == rdd1collect(i)._1})(0)._2
         if (arr1.size != arr2.size) {
           return false
         }
@@ -105,61 +105,35 @@ object Main {
     
     val Rdd = timeSeriesRDD(dtIndex, seriesByFile)
     val cmpRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex)
-    if (rddEquals(Rdd, cmpRdd)) {
-      writer.write("RDD TEST passed\n")
-    }
-    else {
-      writer.write("RDD TEST failed\n")
-      return
-    }
+    
     averageTime(Rdd, cmpRdd, cnt, writer)
 
     val filterRdd = Rdd.filter(_._1.endsWith("Col1"))
     val cmpfilterRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col1")
-    if (rddEquals(filterRdd, cmpfilterRdd)) {
-      writer.write("Filter by Regex RDD TEST passed\n")
-    }
-    else {
-      writer.write("Filter by Regex RDD TEST failed\n")
-      return
-    }
+    
     averageTime(filterRdd, cmpfilterRdd, cnt, writer)
     
-    var filteredRddStart = filterRdd.filterStartingBefore(start)
-    var cmpfilteredRddStart = cmpfilterRdd.filterStartingBefore(start)
-    if (rddEquals(filteredRddStart, cmpfilteredRddStart)) {
-      writer.write("Filter by StartTime TEST passed\n")
-    }
-    else {
-      writer.write("Filter by StartTime TEST failed\n")
-      return
-    }
+    val _startTime = nextBusinessDay(new DateTime(start.getMillis + (end.getMillis - start.getMillis) * 1 / 4, UTC)).toString
+    val startTime = new DateTime(_startTime.toString.substring(0, _startTime.toString.indexOf("T")), UTC)
+    var filteredRddStart = filterRdd.filterStartingBefore(startTime)
+    var cmpfilteredRddStart = cmpfilterRdd.filterStartingBefore(startTime)
+    
     averageTime(filteredRddStart, cmpfilteredRddStart, cnt, writer)
     
-    var filteredRddEnd = filterRdd.filterEndingAfter(end)
-    var cmpfilteredRddEnd = cmpfilterRdd.filterEndingAfter(end)
-    if (rddEquals(filteredRddEnd, cmpfilteredRddEnd)) {
-      writer.write("Filter by EndTime TEST passed\n")
-    }
-    else {
-      writer.write("Filter by EndTime TEST failed\n")
-      return
-    }
+    val _endTime = nextBusinessDay(new DateTime(start.getMillis + (end.getMillis - start.getMillis) * 3 / 4, UTC)).toString
+    val endTime = new DateTime(_endTime.toString.substring(0, _endTime.toString.indexOf("T")), UTC)
+    var filteredRddEnd = filterRdd.filterEndingAfter(endTime)
+    var cmpfilteredRddEnd = cmpfilterRdd.filterEndingAfter(endTime)
+    
     averageTime(filteredRddEnd, cmpfilteredRddEnd, cnt, writer)
 
     val _slicest = nextBusinessDay(new DateTime(start.getMillis + (end.getMillis - start.getMillis)/10, UTC)).toString
     val _sliceet = nextBusinessDay(new DateTime(start.getMillis + (end.getMillis - start.getMillis)/5, UTC)).toString
-    val slicest = new DateTime(_slicest.toString.substring(0, _slicest.toString.indexOf("T")))
-    val sliceet = new DateTime(_sliceet.toString.substring(0, _sliceet.toString.indexOf("T")))
+    val slicest = new DateTime(_slicest.toString.substring(0, _slicest.toString.indexOf("T")), UTC)
+    val sliceet = new DateTime(_sliceet.toString.substring(0, _sliceet.toString.indexOf("T")), UTC)
     val slicedRdd = Rdd.slice(slicest, sliceet).fill("linear")
     val cmpslicedRdd = cmpRdd.slice(slicest, sliceet).fill("linear")
-    if (rddEquals(filteredRddEnd, cmpfilteredRddEnd)) {
-      writer.write("Slice TEST passed\n")
-    }
-    else {
-      writer.write("Slice TEST failed\n")
-      return
-    }
+    
     averageTime(slicedRdd, cmpslicedRdd, cnt, writer)
 
     writer.write("\n\n")

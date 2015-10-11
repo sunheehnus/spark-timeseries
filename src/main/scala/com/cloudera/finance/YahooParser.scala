@@ -22,6 +22,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone.UTC
 
 object YahooParser {
   def yahooStringToTimeSeries(text: String, keyPrefix: String = ""): TimeSeries = {
@@ -29,7 +30,7 @@ object YahooParser {
     val labels = lines(0).split(',').tail.map(keyPrefix + _)
     val samples = lines.tail.map { line =>
       val tokens = line.split(',')
-      val dt = new DateTime(tokens.head)
+      val dt = new DateTime(tokens.head, UTC)
       (dt, tokens.tail.map(_.toDouble))
     }.reverse
     timeSeriesFromIrregularSamples(samples, labels)

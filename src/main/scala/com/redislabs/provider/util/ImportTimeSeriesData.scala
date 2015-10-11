@@ -3,6 +3,7 @@ package com.redislabs.provider.util
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone.UTC
 import breeze.linalg._
 import breeze.numerics._
 
@@ -21,7 +22,7 @@ object ImportTimeSeriesData {
     val label = keyPrefix + lines(0).split(",", 2).tail.head
     val samples = lines.tail.map(line => {
       val tokens = line.split(",", 2)
-      val dt = new DateTime(tokens.head)
+      val dt = new DateTime(tokens.head, UTC)
       (dt, tokens.tail.head)
     })
     
