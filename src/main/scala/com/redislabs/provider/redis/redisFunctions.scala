@@ -43,7 +43,7 @@ object NodesInfo {
    * @return true if the target server is in cluster mode
    */
   private def clusterEnable(initialHost: (String, Int)) : Boolean = {
-    new Jedis(initialHost._1, initialHost._2).info("cluster").contains("1")
+    new Jedis("/tmp/redis.sock").info("cluster").contains("1")
   }
 
   /**
@@ -85,7 +85,7 @@ object NodesInfo {
    * @return list of nodes(addr, port, index, range, startSlot, endSlot)
    */
   private def getClusterSlots(initialHost: (String, Int)) = {
-    val j = new Jedis(initialHost._1, initialHost._2)
+    val j = new Jedis("/tmp/redis.sock")
     j.clusterSlots().asInstanceOf[java.util.List[java.lang.Object]].flatMap {
       slotInfoObj =>
         {
@@ -122,12 +122,12 @@ object NodesInfo {
    */
   private def getNonClusterNodes(initialHost: (String, Int)) = {
     var master = initialHost
-    var replinfo = new Jedis(initialHost._1, initialHost._2).info("Replication").split("\n")
+    var replinfo = new Jedis("/tmp/redis.sock").info("Replication").split("\n")
     if (replinfo.filter(_.contains("role:slave")).length != 0){
       val host = replinfo.filter(_.contains("master_host:"))(0).trim.substring(12)
       val port = replinfo.filter(_.contains("master_port:"))(0).trim.substring(12).toInt
       master = (host, port)
-      val j = new Jedis(host, port)
+      val j = new Jedis("/tmp/redis.sock")
       replinfo = j.info("Replication").split("\n")
     }
     val slaves = replinfo.filter(x => (x.contains("slave") && x.contains("online"))).map(rl => {
@@ -145,7 +145,7 @@ object NodesInfo {
    * @return list of nodes(addr, port, index, range)
    */
   private def getClusterNodes(initialHost: (String, Int)) = {
-    val j = new Jedis(initialHost._1, initialHost._2)
+    val j = new Jedis("/tmp/redis.sock")
     j.clusterSlots().asInstanceOf[java.util.List[java.lang.Object]].flatMap {
       slotInfoObj =>
         {
@@ -182,7 +182,7 @@ object SaveToRedis {
    * save all the k/vs to zsetName(zset type) to the target host
    */
   def setZset(host: (String, Int), zsetName: String, arr: Iterator[(String, String)]) = {
-    val jedis = new Jedis(host._1, host._2)
+    val jedis = new Jedis("/tmp/redis.sock")
     val pipeline = jedis.pipelined
     arr.foreach(x => pipeline.zadd(zsetName, x._2.toDouble, x._1))
     pipeline.sync

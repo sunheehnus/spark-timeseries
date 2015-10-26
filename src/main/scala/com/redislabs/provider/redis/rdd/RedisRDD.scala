@@ -85,7 +85,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
-          val jedis = new Jedis(x._1._1, x._1._2)
+          val jedis = new Jedis("/tmp/redis.sock")
           val zsetKeys = filterKeysByType(jedis, x._2, "zset")
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
@@ -261,7 +261,7 @@ trait Keys {
     val keys = new util.HashSet[String]()
     if (isRedisRegex(keyPattern)) {
       nodes.foreach(node => {
-        val jedis = new Jedis(node._1, node._2)
+        val jedis = new Jedis("/tmp/redis.sock")
         val params = new ScanParams().`match`(keyPattern)
         keys.addAll(scanKeys(jedis, params).filter(key => {
           val slot = JedisClusterCRC16.getSlot(key)
