@@ -214,7 +214,7 @@ class TimeSeriesRDD(val index: DateTimeIndex, parent: RDD[(String, Vector[Double
    */
   def toInstants(nPartitions: Int = -1): RDD[(DateTime, Vector[Double])] = {
     val maxChunkSize = 20
-
+    val step = 65536
     val dividedOnMapSide = mapPartitionsWithIndex { case (partitionId, iter) =>
       new Iterator[((Int, Int), Vector[Double])] {
         // Each chunk is a buffer of time series
@@ -241,7 +241,7 @@ class TimeSeriesRDD(val index: DateTimeIndex, parent: RDD[(String, Vector[Double
             i += 1
           }
           dtLoc += 1
-          ((dtLoc - 1, partitionId * maxChunkSize + chunkId), new DenseVector(arr))
+          ((dtLoc - 1, partitionId * step + chunkId), new DenseVector(arr))
         }
       }
     }
@@ -253,7 +253,9 @@ class TimeSeriesRDD(val index: DateTimeIndex, parent: RDD[(String, Vector[Double
     val partitioner = new Partitioner() {
       val nPart = if (nPartitions == -1) parent.partitions.length else nPartitions
       override def numPartitions: Int = nPart
-      override def getPartition(key: Any): Int = key.asInstanceOf[(Int, _)]._1 / nPart
+      override def getPartition(key: Any): Int = {
+        (key.asInstanceOf[(Int, _)]._1 * 1.0 * numPartitions / index.size).toInt
+      }
     }
     implicit val ordering = new Ordering[(Int, Int)] {
       override def compare(a: (Int, Int), b: (Int, Int)): Int = {
@@ -339,7 +341,7 @@ class TimeSeriesRDD(val index: DateTimeIndex, parent: RDD[(String, Vector[Double
       (timestamp, v.toArray)
     }.toDF()
 
-    val dataColExpr = keys.zipWithIndex.map { case (key, i) => s"_2[$i] AS $key" }
+    val dataColExpr = keys.zipWithIndex.map { case (key, i) => s"_2[$i] AS `$key`" }
     val allColsExpr = "_1 AS instant" +: dataColExpr
 
     result.selectExpr(allColsExpr: _*)

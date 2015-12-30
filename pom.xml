@@ -33,12 +33,11 @@
     <java.version>1.7</java.version>
     <scala.minor.version>2.10</scala.minor.version>
     <scala.complete.version>${scala.minor.version}.4</scala.complete.version>
-    <spark.version>1.4.0</spark.version>
+    <spark.version>1.4.1</spark.version>
     <breeze.version>0.10</breeze.version>
   </properties>
 
   <build>
-  <pluginManagement> 
     <plugins>
       <plugin>
         <groupId>net.alchim31.maven</groupId>
@@ -220,7 +219,6 @@
         </dependencies>
       </plugin>
     </plugins>
-    </pluginManagement> 
   </build>
 
   <dependencies>
