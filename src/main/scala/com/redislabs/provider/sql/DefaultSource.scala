@@ -15,11 +15,11 @@ import java.sql.Timestamp
 
 import com.redislabs.provider.redis._
 
-class FilterParser(filters: Array[Filter]) {
+class FilterParser(filters: Array[Filter], fieldName: Map[String, String]) {
   private val filtersByAttr: Map[String, Array[Filter]] = filters.map(f => (getAttr(f), f)).groupBy(_._1).mapValues(a => a.map(p => p._2))
   def getStartTime: String = {
     var startTime: Timestamp = new Timestamp(90, 10, 14, 0, 0, 0, 0)
-    filtersByAttr.getOrElse("instant", new Array[Filter](0)).foreach({
+    filtersByAttr.getOrElse(fieldName("timestamp"), new Array[Filter](0)).foreach({
       case GreaterThan(attr, v) => startTime = v.asInstanceOf[Timestamp]
       case GreaterThanOrEqual(attr, v) => startTime = v.asInstanceOf[Timestamp]
       case _ => {}
@@ -29,7 +29,7 @@ class FilterParser(filters: Array[Filter]) {
   }
   def getEndTime: String = {
     var endTime: Timestamp = new Timestamp(91, 11, 3, 0, 0, 0, 0)
-    filtersByAttr.getOrElse("instant", new Array[Filter](0)).foreach({
+    filtersByAttr.getOrElse(fieldName("timestamp"), new Array[Filter](0)).foreach({
       case LessThan(attr, v) => endTime = v.asInstanceOf[Timestamp]
       case LessThanOrEqual(attr, v) => endTime = v.asInstanceOf[Timestamp]
       case _ => {}
@@ -38,15 +38,12 @@ class FilterParser(filters: Array[Filter]) {
     et.substring(0, et.indexOf(' '))
   }
   def getFrequency(frequency: String): Frequency = {
-    var fq: Frequency = new BusinessDayFrequency(1)
-    filtersByAttr.getOrElse("frequency", new Array[Filter](0)).foreach({
-      case EqualTo(attr, v) => fq = (v.asInstanceOf[String]) match {
-        case "businessDay" => new BusinessDayFrequency(1)
-        case "day" => new DayFrequency(1)
-        case "hour" => new HourFrequency(1)
-      }
-    })
-    fq
+    frequency match {
+      case "businessDay" => new BusinessDayFrequency(1)
+      case "day" => new DayFrequency(1)
+      case "hour" => new HourFrequency(1)
+      case _ => new BusinessDayFrequency(1)
+    }
   }
   def getDateTimeIndex(frequency: String) = {
     val start = getStartTime
@@ -106,7 +103,7 @@ case class InstantScan(parameters: Map[String, String])
 
   def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val requiredColumnsIndex = requiredColumns.map(schema.fieldIndex(_))
-    val fp = new FilterParser(filters)
+    val fp = new FilterParser(filters, Map("timestamp" -> "instant"))
     val dtindex = fp.getDateTimeIndex(frequency)
 
     var rtsRdd = sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
@@ -147,7 +144,7 @@ case class ObservationScan(parameters: Map[String, String])
 
   def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val requiredColumnsIndex = requiredColumns.map(schema.fieldIndex(_))
-    val fp = new FilterParser(filters)
+    val fp = new FilterParser(filters, Map("timestamp" -> tsCol))
     val dtindex = fp.getDateTimeIndex(frequency)
 
     var rtsRdd = sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
