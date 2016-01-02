@@ -92,12 +92,14 @@ case class InstantScan(val host: String,
 
   val schema: StructType = StructType(getTimeSchema +: getColSchema)
 
-  // Get the data, filter and project it, and return as an RDD
   def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+    val requiredColumnsIndex = requiredColumns.map(schema.fieldIndex(_))
     val fp = new FilterParser(filters)
     val dtindex = fp.getDateTimeIndex(frequency)
     val cmpRdd = sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
-    cmpRdd.toTimeSeriresRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map(x => Row.fromSeq(x.toSeq))
+    cmpRdd.toTimeSeriresRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
+      candidates => requiredColumnsIndex.map(candidates(_))
+    }.map(x => Row.fromSeq(x.toSeq))
   }
 }
 
@@ -118,14 +120,22 @@ case class ObservationScan(val host: String,
   ))
 
   def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+    val requiredColumnsIndex = requiredColumns.map(schema.fieldIndex(_))
+    requiredColumnsIndex.foreach(println)
     val fp = new FilterParser(filters)
     val dtindex = fp.getDateTimeIndex(frequency)
     val cmpRdd = sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
+
     cmpRdd.flatMap{
       case (key, series) => {
         series.iterator.flatMap {
           case (i, value) =>
-            if (value.isNaN) None else Some(Row(new Timestamp(dtindex.dateTimeAtLoc(i).getMillis), key, value))
+            if (value.isNaN)
+              None
+            else {
+              val candidates = (new Timestamp(dtindex.dateTimeAtLoc(i).getMillis)) +: key +: value +: Nil
+              Some(Row.fromSeq(requiredColumnsIndex.map(candidates(_)).toSeq))
+            }
         }
       }
     }
