@@ -241,7 +241,7 @@ object Main {
     writer.write(f"Speed up: ${improve}%.2f %%\n\n\n")
   }
   def InstantDFEqual(df1: DataFrame, df2: DataFrame) = {
-    true
+    if (df1.count != df2.count) false else true
   }
   def InstantDFTEST(sc: SparkContext, writer: PrintWriter, ty: String, cnt: Int, msg: String, dir: String, prefix: String, redisNode: (String, Int)) {
 
@@ -363,7 +363,7 @@ object Main {
 
     val endTime2 = new DateTime("2013-11-11", UTC)
     val endTimeStr2 = "2013-11-11"
-    var filteredDfEnd2 = timeSeriesRDD(dtIndex, seriesByFile).filterStartingBefore(startTime2).toInstantsDataFrame(sqlContext)
+    var filteredDfEnd2 = timeSeriesRDD(dtIndex, seriesByFile).filterEndingAfter(endTime2).toInstantsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
                        |USING com.redislabs.provider.sql
@@ -387,8 +387,10 @@ object Main {
 
     val slicest1 = new DateTime("2005-01-03", UTC)
     val slicestStr1 = "2005-01-03"
+    val slicestTimeStamp1 = new Timestamp(slicest1.getMillis()).toString
     val sliceet1 = new DateTime("2015-01-01", UTC)
     val sliceetStr1 = "2015-01-01"
+    val sliceetTimeStamp1 = new Timestamp(sliceet1.getMillis()).toString
     var slicedDf1 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
@@ -399,7 +401,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE instant >= CAST('$slicestStr1' AS TIMESTAMP) AND instant <= CAST('$sliceetStr1' AS TIMESTAMP)
+                        |WHERE instant >= CAST('$slicestTimeStamp1' AS TIMESTAMP) AND instant <= CAST('$sliceetTimeStamp1' AS TIMESTAMP)
         """.stripMargin)
     if (InstantDFEqual(slicedDf1, cmpslicedDf1)) {
       writer.write("Slice RDD TEST passed (10 years)\n")
@@ -414,8 +416,10 @@ object Main {
 
     val slicest2 = new DateTime("2005-01-03", UTC)
     val slicestStr2 = "2005-01-03"
+    val slicestTimeStamp2 = new Timestamp(slicest2.getMillis()).toString
     val sliceet2 = new DateTime("2015-01-01", UTC)
     val sliceetStr2 = "2015-01-01"
+    val sliceetTimeStamp2 = new Timestamp(sliceet2.getMillis()).toString
     var slicedDf2 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
@@ -426,7 +430,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE instant >= CAST('$slicestStr2' AS TIMESTAMP) AND instant <= CAST('$sliceetStr2' AS TIMESTAMP)
+                        |WHERE instant >= CAST('$slicestTimeStamp2' AS TIMESTAMP) AND instant <= CAST('$sliceetTimeStamp2' AS TIMESTAMP)
         """.stripMargin)
     if (InstantDFEqual(slicedDf2, cmpslicedDf2)) {
       writer.write("Slice RDD TEST passed (5 years)\n")
@@ -440,8 +444,10 @@ object Main {
 
     val slicest3 = new DateTime("2014-01-01", UTC)
     val slicestStr3 = "2014-01-01"
+    val slicestTimeStamp3 = new Timestamp(slicest3.getMillis()).toString
     val sliceet3 = new DateTime("2015-01-01", UTC)
     val sliceetStr3 = "2015-01-01"
+    val sliceetTimeStamp3 = new Timestamp(sliceet3.getMillis()).toString
     var slicedDf3 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
@@ -452,7 +458,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE instant >= CAST('$slicestStr3' AS TIMESTAMP) AND instant <= CAST('$sliceetStr3' AS TIMESTAMP)
+                        |WHERE instant >= CAST('$slicestTimeStamp3' AS TIMESTAMP) AND instant <= CAST('$sliceetTimeStamp3' AS TIMESTAMP)
         """.stripMargin)
     if (InstantDFEqual(slicedDf3, cmpslicedDf3)) {
       writer.write("Slice RDD TEST passed (1 years)\n")
@@ -474,7 +480,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE instant >= CAST('$slicestStr1' AS TIMESTAMP) AND instant <= CAST('$sliceetStr1' AS TIMESTAMP)
+                        |WHERE instant >= CAST('$slicestTimeStamp1' AS TIMESTAMP) AND instant <= CAST('$sliceetTimeStamp1' AS TIMESTAMP)
         """.stripMargin)
     if (InstantDFEqual(fsDf1, cmpfsDf1)) {
       writer.write("Filter by StartTime & EndTime then Slice RDD TEST passed (10 years)\n")
@@ -496,7 +502,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE instant >= CAST('$slicestStr2' AS TIMESTAMP) AND instant <= CAST('$sliceetStr2' AS TIMESTAMP)
+                        |WHERE instant >= CAST('$slicestTimeStamp2' AS TIMESTAMP) AND instant <= CAST('$sliceetTimeStamp2' AS TIMESTAMP)
         """.stripMargin)
     if (InstantDFEqual(fsDf2, cmpfsDf2)) {
       writer.write("Filter by StartTime & EndTime then Slice RDD TEST passed (5 years)\n")
@@ -518,7 +524,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE instant >= CAST('$slicestStr3' AS TIMESTAMP) AND instant <= CAST('$sliceetStr3' AS TIMESTAMP)
+                        |WHERE instant >= CAST('$slicestTimeStamp3' AS TIMESTAMP) AND instant <= CAST('$sliceetTimeStamp3' AS TIMESTAMP)
         """.stripMargin)
     if (InstantDFEqual(fsDf3, cmpfsDf3)) {
       writer.write("Filter by StartTime & EndTime then Slice RDD TEST passed (1 years)\n")
@@ -552,7 +558,7 @@ object Main {
     writer.write(f"Speed up: ${improve}%.2f %%\n\n\n")
   }
   def ObservationDFEqual(df1: DataFrame, df2: DataFrame) = {
-    true
+    if (df1.count != df2.count) false else true
   }
   def ObservationDFTest(sc: SparkContext, writer: PrintWriter, ty: String, cnt: Int, msg: String, dir: String, prefix: String, redisNode: (String, Int)) {
 
@@ -674,7 +680,7 @@ object Main {
 
     val endTime2 = new DateTime("2013-11-11", UTC)
     val endTimeStr2 = "2013-11-11"
-    var filteredDfEnd2 = timeSeriesRDD(dtIndex, seriesByFile).filterStartingBefore(startTime2).toObservationsDataFrame(sqlContext)
+    var filteredDfEnd2 = timeSeriesRDD(dtIndex, seriesByFile).filterEndingAfter(endTime2).toObservationsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
                        |USING com.redislabs.provider.sql
@@ -698,8 +704,10 @@ object Main {
 
     val slicest1 = new DateTime("2005-01-03", UTC)
     val slicestStr1 = "2005-01-03"
+    val slicestTimeStamp1 = new Timestamp(slicest1.getMillis()).toString
     val sliceet1 = new DateTime("2015-01-01", UTC)
     val sliceetStr1 = "2015-01-01"
+    val sliceetTimeStamp1 = new Timestamp(sliceet1.getMillis()).toString
     var slicedDf1 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest1, sliceet1).fill("linear").toObservationsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
@@ -710,7 +718,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE timestamp >= CAST('$slicestStr1' AS TIMESTAMP) AND timestamp <= CAST('$sliceetStr1' AS TIMESTAMP)
+                        |WHERE timestamp >= CAST('$slicestTimeStamp1' AS TIMESTAMP) AND timestamp <= CAST('$sliceetTimeStamp1' AS TIMESTAMP)
         """.stripMargin)
     if (ObservationDFEqual(slicedDf1, cmpslicedDf1)) {
       writer.write("Slice RDD TEST passed (10 years)\n")
@@ -725,8 +733,10 @@ object Main {
 
     val slicest2 = new DateTime("2005-01-03", UTC)
     val slicestStr2 = "2005-01-03"
+    val slicestTimeStamp2 = new Timestamp(slicest2.getMillis()).toString
     val sliceet2 = new DateTime("2015-01-01", UTC)
     val sliceetStr2 = "2015-01-01"
+    val sliceetTimeStamp2 = new Timestamp(sliceet2.getMillis()).toString
     var slicedDf2 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest2, sliceet2).fill("linear").toObservationsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
@@ -737,7 +747,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE timestamp >= CAST('$slicestStr2' AS TIMESTAMP) AND timestamp <= CAST('$sliceetStr2' AS TIMESTAMP)
+                        |WHERE timestamp >= CAST('$slicestTimeStamp2' AS TIMESTAMP) AND timestamp <= CAST('$sliceetTimeStamp2' AS TIMESTAMP)
         """.stripMargin)
     if (ObservationDFEqual(slicedDf2, cmpslicedDf2)) {
       writer.write("Slice RDD TEST passed (5 years)\n")
@@ -751,8 +761,10 @@ object Main {
 
     val slicest3 = new DateTime("2014-01-01", UTC)
     val slicestStr3 = "2014-01-01"
+    val slicestTimeStamp3 = new Timestamp(slicest3.getMillis()).toString
     val sliceet3 = new DateTime("2015-01-01", UTC)
     val sliceetStr3 = "2015-01-01"
+    val sliceetTimeStamp3 = new Timestamp(sliceet3.getMillis()).toString
     var slicedDf3 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest3, sliceet3).fill("linear").toObservationsDataFrame(sqlContext)
     sqlContext.sql( s"""
                        |CREATE TEMPORARY TABLE dataTable
@@ -763,7 +775,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE timestamp >= CAST('$slicestStr3' AS TIMESTAMP) AND timestamp <= CAST('$sliceetStr3' AS TIMESTAMP)
+                        |WHERE timestamp >= CAST('$slicestTimeStamp3' AS TIMESTAMP) AND timestamp <= CAST('$sliceetTimeStamp3' AS TIMESTAMP)
         """.stripMargin)
     if (ObservationDFEqual(slicedDf3, cmpslicedDf3)) {
       writer.write("Slice RDD TEST passed (1 years)\n")
@@ -785,7 +797,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE timestamp >= CAST('$slicestStr1' AS TIMESTAMP) AND timestamp <= CAST('$sliceetStr1' AS TIMESTAMP)
+                        |WHERE timestamp >= CAST('$slicestTimeStamp1' AS TIMESTAMP) AND timestamp <= CAST('$sliceetTimeStamp1' AS TIMESTAMP)
         """.stripMargin)
     if (ObservationDFEqual(fsDf1, cmpfsDf1)) {
       writer.write("Filter by StartTime & EndTime then Slice RDD TEST passed (10 years)\n")
@@ -807,7 +819,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE timestamp >= CAST('$slicestStr2' AS TIMESTAMP) AND timestamp <= CAST('$sliceetStr2' AS TIMESTAMP)
+                        |WHERE timestamp >= CAST('$slicestTimeStamp2' AS TIMESTAMP) AND timestamp <= CAST('$sliceetTimeStamp2' AS TIMESTAMP)
         """.stripMargin)
     if (ObservationDFEqual(fsDf2, cmpfsDf2)) {
       writer.write("Filter by StartTime & EndTime then Slice RDD TEST passed (5 years)\n")
@@ -829,7 +841,7 @@ object Main {
       sqlContext.sql(s"""
                         |SELECT *
                         |FROM dataTable
-                        |WHERE timestamp >= CAST('$slicestStr3' AS TIMESTAMP) AND timestamp <= CAST('$sliceetStr3' AS TIMESTAMP)
+                        |WHERE timestamp >= CAST('$slicestTimeStamp3' AS TIMESTAMP) AND timestamp <= CAST('$sliceetTimeStamp3' AS TIMESTAMP)
         """.stripMargin)
     if (ObservationDFEqual(fsDf3, cmpfsDf3)) {
       writer.write("Filter by StartTime & EndTime then Slice RDD TEST passed (1 years)\n")
@@ -862,9 +874,9 @@ object Main {
       InstantDFTEST(sc, writer1, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
       InstantDFTEST(sc, writer2, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
       InstantDFTEST(sc, writer3, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      ObservationDFTest(sc, writer1, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      ObservationDFTest(sc, writer2, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      ObservationDFTest(sc, writer2, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
+      ObservationDFTest(sc, writer4, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
+      ObservationDFTest(sc, writer5, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
+      ObservationDFTest(sc, writer6, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
     }}
 
     writer1.close
