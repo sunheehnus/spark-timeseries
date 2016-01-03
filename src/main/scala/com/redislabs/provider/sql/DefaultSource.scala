@@ -96,7 +96,7 @@ case class InstantScan(parameters: Map[String, String])
     if (parameters.get("mapSeries") != None) {
       parameters("mapSeries").split(",").foreach(ms => rtsRdd = rtsRdd.mapSeries(sqlContext.getMapSeries(ms.trim)))
     }
-    return rtsRdd.toTimeSeriresRDD().keys.map(StructField(_, DoubleType, nullable = true))
+    return rtsRdd.toTimeSeriesRDD().keys.map(StructField(_, DoubleType, nullable = true))
   }
 
   val schema: StructType = StructType(getTimeSchema +: getColSchema)
@@ -118,7 +118,7 @@ case class InstantScan(parameters: Map[String, String])
       parameters("mapSeries").split(",").foreach(ms => rtsRdd = rtsRdd.mapSeries(sqlContext.getMapSeries(ms.trim)))
     }
 
-    rtsRdd.toTimeSeriresRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
+    rtsRdd.toTimeSeriesRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
       candidates => requiredColumnsIndex.map(candidates(_))
     }.map(x => Row.fromSeq(x.toSeq))
   }

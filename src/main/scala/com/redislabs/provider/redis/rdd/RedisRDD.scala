@@ -31,7 +31,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                          f: (Vector[Double]) => Vector[Double] = null)
     extends RDD[(String, Vector[Double])](prev) with Keys {
 
-  def toTimeSeriresRDD(): TimeSeriesRDD = {
+  def toTimeSeriesRDD(): TimeSeriesRDD = {
     new TimeSeriesRDD(index, this)
   }
   override def getPartitions: Array[Partition] = prev.partitions
