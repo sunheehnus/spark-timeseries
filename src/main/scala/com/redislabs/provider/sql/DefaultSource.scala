@@ -93,9 +93,6 @@ case class InstantScan(parameters: Map[String, String])
       rtsRdd = rtsRdd.filterStartingBefore(new DateTime(parameters("startingBefore"), UTC))
     if (parameters.get("endingAfter") != None)
       rtsRdd = rtsRdd.filterEndingAfter(new DateTime(parameters("endingAfter"), UTC))
-    if (parameters.get("mapSeries") != None) {
-      parameters("mapSeries").split(",").foreach(ms => rtsRdd = rtsRdd.mapSeries(sqlContext.getMapSeries(ms.trim)))
-    }
     return rtsRdd.toTimeSeriesRDD().keys.map(StructField(_, DoubleType, nullable = true))
   }
 
@@ -117,10 +114,24 @@ case class InstantScan(parameters: Map[String, String])
     if (parameters.get("mapSeries") != None) {
       parameters("mapSeries").split(",").foreach(ms => rtsRdd = rtsRdd.mapSeries(sqlContext.getMapSeries(ms.trim)))
     }
-
-    rtsRdd.toTimeSeriesRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
-      candidates => requiredColumnsIndex.map(candidates(_))
-    }.map(x => Row.fromSeq(x.toSeq))
+//    rtsRdd.toTimeSeriesRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
+//      candidates => requiredColumnsIndex.map(candidates(_))
+//    }.map(x => Row.fromSeq(x.toSeq))
+    rtsRdd.toTimeSeriesRDD().toInstants().mapPartitions { case iter =>
+      iter.map(x => new Timestamp(x._1.getMillis) +: x._2.toArray).map {
+        candidates => requiredColumnsIndex.map(candidates(_))
+      }.map(x => Row.fromSeq(x.toSeq))
+    }
+//    rtsRdd.toTimeSeriesRDD().toInstants().mapPartitions { case iter =>
+//        new Iterator[Row] {
+//          override def hasNext: Boolean = iter.hasNext
+//          override def next(): Row = {
+//            val nxt = iter.next
+//            val candidate = new Timestamp(nxt._1.getMillis()) +: nxt._2.toArray
+//            Row.fromSeq(requiredColumnsIndex.map(candidate(_)).toSeq)
+//          }
+//        }
+//    }
   }
 }
 

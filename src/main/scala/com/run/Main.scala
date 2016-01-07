@@ -230,15 +230,18 @@ object Main {
     val endTimedf1 = System.currentTimeMillis
     val period1 = (endTimedf1 - startTimedf1) / 1000.0 / cnt
     writer.write(f"TimeSeries: ${period1}%.2f s\n")
+    writer.flush
 
     val startTimedf2 = System.currentTimeMillis
     (0 until cnt).foreach(x => df2.collect())
     val endTimedf2 = System.currentTimeMillis
     val period2 = (endTimedf2 - startTimedf2) / 1000.0 / cnt
     writer.write(f"RedisTimeSeries: ${period2}%.2f s\n")
+    writer.flush
 
     val improve = period1 * 100.0 / period2
     writer.write(f"Speed up: ${improve}%.2f %%\n\n\n")
+    writer.flush
   }
   def InstantDFEqual(df1: DataFrame, df2: DataFrame) = {
 //    if (df1.count != df2.count) false else true
@@ -858,11 +861,55 @@ object Main {
     writer.write("\n\n")
     writer.flush
   }
+  def sliceTEST(sc: SparkContext, ty: String, cnt: Int, msg: String, dir: String, prefix: String, redisNode: (String, Int)) {
+
+    val sqlContext = new SQLContext(sc)
+
+    sqlContext.setMapSeries("linear", (x: Vector[Double]) => UnivariateTimeSeries.fillts(x, "linear"))
+
+    val seriesByFile: RDD[TimeSeries] = YahooParser.yahooFiles(dir, sc)
+
+    if (ty == "SER") {
+      seriesByFile.persist(StorageLevel.MEMORY_AND_DISK_SER)
+      seriesByFile.collect
+    }
+    if (ty == "Tachyon") {
+      seriesByFile.persist(StorageLevel.OFF_HEAP)
+      seriesByFile.collect
+    }
+
+    val start = seriesByFile.map(_.index.first).takeOrdered(1).head
+    val startTimeStr = new Timestamp(start.getMillis()).toString
+    val end = seriesByFile.map(_.index.last).top(1).head
+    val endTimeStr = new Timestamp(end.getMillis()).toString
+
+    val dtIndex = uniform(start, end, 1.businessDays)
+
+    val slicest1 = new DateTime("2010-01-04", UTC)
+    val sliceet1 = new DateTime("2015-01-02", UTC)
+    var slicedDf1 = timeSeriesRDD(dtIndex, seriesByFile).slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext)
+//    var cmpslicedDf1 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).slice(slicest1, sliceet1).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+
+    val options = Map("prefix" -> prefix, "frequency" -> "businessDay", "type" -> "observation", "mapSeries" -> "linear")
+    val df = sqlContext.load("com.redislabs.provider.sql", options)
+    val bg1 = new Timestamp(new DateTime("2010-01-04", UTC).getMillis())
+    val bg2 = new Timestamp(new DateTime("2015-01-02", UTC).getMillis())
+    val cmpslicedDf1 = df.filter(df.col("timestamp") >= bg1).filter(df.col("timestamp") <= bg2)
+
+    val t1 = System.currentTimeMillis()
+    slicedDf1.collect
+    val t2 = System.currentTimeMillis()
+    val t3 = System.currentTimeMillis()
+    cmpslicedDf1.collect
+    val t4 = System.currentTimeMillis()
+    println(t2 - t1)
+    println(t4 - t3)
+  }
 
   def main(args: Array[String]) {
 
     val path = "/Users/sunheehnus/develop/RedisLabs"
-    val conf = new SparkConf().setAppName("test").setMaster("local")
+    val conf = new SparkConf().setAppName("test")
     val sc = new SparkContext(conf)
 
     val writer1 = new PrintWriter(new File(path + "/instant_DiskBased.out"))
@@ -871,7 +918,7 @@ object Main {
     val writer4 = new PrintWriter(new File(path + "/observation_DiskBased.out"))
     val writer5 = new PrintWriter(new File(path + "/observation_Serialized.out"))
     val writer6 = new PrintWriter(new File(path + "/observation_Tachyon.out"))
-    (1 to 1).foreach{ i => {
+    (2 to 2).foreach{ i => {
       ImportToRedisServer(path + "/TEST" + i.toString, "TEST" + i.toString, sc, ("127.0.0.1", 6379))
       InstantDFTEST(sc, writer1, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
       InstantDFTEST(sc, writer2, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
