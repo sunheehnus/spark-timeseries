@@ -270,8 +270,8 @@ object Main {
     val Rdd = timeSeriesRDD(dtIndex, seriesByFile)
     val cmpRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex)
 
-    val df = Rdd.toInstantsDataFrame(sqlContext)
-    val cmpdf = cmpRdd.toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val df = Rdd.toInstantsDataFrame(sqlContext, 2)
+    val cmpdf = cmpRdd.toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(df, cmpdf)) {
       writer.write("InstantDF TEST passed\n")
     }
@@ -281,8 +281,8 @@ object Main {
     }
     InstantDFAverage(df, cmpdf, cnt, writer)
 
-    val filterDf1 = Rdd.filter(_._1.endsWith("Col1")).toInstantsDataFrame(sqlContext)
-    val cmpfilterDf1 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col1").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val filterDf1 = Rdd.filter(_._1.endsWith("Col1")).toInstantsDataFrame(sqlContext, 2)
+    val cmpfilterDf1 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col1").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(filterDf1, cmpfilterDf1)) {
       writer.write("Filter by Regex InstantDF TEST passed\n")
     }
@@ -292,8 +292,8 @@ object Main {
     }
     InstantDFAverage(filterDf1, cmpfilterDf1, cnt, writer)
 
-    val filterDf2 = Rdd.filter(_._1.endsWith("Col8")).toInstantsDataFrame(sqlContext)
-    val cmpfilterDf2 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col8").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val filterDf2 = Rdd.filter(_._1.endsWith("Col8")).toInstantsDataFrame(sqlContext, 2)
+    val cmpfilterDf2 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col8").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(filterDf2, cmpfilterDf2)) {
       writer.write("Filter by Regex InstantDF TEST passed\n")
     }
@@ -304,8 +304,8 @@ object Main {
     InstantDFAverage(filterDf2, cmpfilterDf2, cnt, writer)
 
     val startTime2 = new DateTime("1983-10-10", UTC)
-    var filteredDfStart2 = Rdd.filterStartingBefore(startTime2).toInstantsDataFrame(sqlContext)
-    var cmpfilteredDfStart2 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterStartingBefore(startTime2).toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    var filteredDfStart2 = Rdd.filterStartingBefore(startTime2).toInstantsDataFrame(sqlContext, 2)
+    var cmpfilteredDfStart2 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterStartingBefore(startTime2).toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(filteredDfStart2, cmpfilteredDfStart2)) {
       writer.write("Filter by StartTime InstantDF TEST passed\n")
     }
@@ -317,8 +317,8 @@ object Main {
 
 
     val endTime2 = new DateTime("2013-11-11", UTC)
-    var filteredDfEnd2 = Rdd.filterEndingAfter(endTime2).toInstantsDataFrame(sqlContext)
-    var cmpfilteredDfEnd2 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterEndingAfter(endTime2).toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    var filteredDfEnd2 = Rdd.filterEndingAfter(endTime2).toInstantsDataFrame(sqlContext, 2)
+    var cmpfilteredDfEnd2 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterEndingAfter(endTime2).toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(filteredDfEnd2, cmpfilteredDfEnd2)) {
       writer.write("Filter by EndTime InstantDF TEST passed\n")
     }
@@ -330,8 +330,8 @@ object Main {
 
     val slicest1 = new DateTime("2005-01-03", UTC)
     val sliceet1 = new DateTime("2015-01-01", UTC)
-    val slicedDf1 = Rdd.slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpslicedDf1 = cmpRdd.slice(slicest1, sliceet1).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val slicedDf1 = Rdd.slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext, 2)
+    val cmpslicedDf1 = cmpRdd.slice(slicest1, sliceet1).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(slicedDf1, cmpslicedDf1)) {
       writer.write("Slice InstantDF TEST passed (10 years)\n")
     }
@@ -343,8 +343,8 @@ object Main {
 
     val slicest2 = new DateTime("2010-01-01", UTC)
     val sliceet2 = new DateTime("2015-01-01", UTC)
-    val slicedDf2 = Rdd.slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpslicedDf2 = cmpRdd.slice(slicest2, sliceet2).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val slicedDf2 = Rdd.slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext, 2)
+    val cmpslicedDf2 = cmpRdd.slice(slicest2, sliceet2).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(slicedDf2, cmpslicedDf2)) {
       writer.write("Slice InstantDF TEST passed (5 years)\n")
     }
@@ -356,8 +356,8 @@ object Main {
 
     val slicest3 = new DateTime("2014-01-01", UTC)
     val sliceet3 = new DateTime("2015-01-01", UTC)
-    val slicedDf3 = Rdd.slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpslicedDf3 = cmpRdd.slice(slicest3, sliceet3).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val slicedDf3 = Rdd.slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext, 2)
+    val cmpslicedDf3 = cmpRdd.slice(slicest3, sliceet3).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(slicedDf3, cmpslicedDf3)) {
       writer.write("Slice InstantDF TEST passed (1 years)\n")
     }
@@ -367,8 +367,8 @@ object Main {
     }
     InstantDFAverage(slicedDf3, cmpslicedDf3, cnt, writer)
 
-    val fsDf1 = Rdd.filterStartingBefore(slicest1).filterEndingAfter(sliceet1).slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpfsDf1 = cmpRdd.filterStartingBefore(slicest1).filterEndingAfter(sliceet1).slice(slicest1, sliceet1).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val fsDf1 = Rdd.filterStartingBefore(slicest1).filterEndingAfter(sliceet1).slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext, 2)
+    val cmpfsDf1 = cmpRdd.filterStartingBefore(slicest1).filterEndingAfter(sliceet1).slice(slicest1, sliceet1).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(fsDf1, cmpfsDf1)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (10 years)\n")
     }
@@ -378,8 +378,8 @@ object Main {
     }
     InstantDFAverage(fsDf1, cmpfsDf1, cnt, writer)
 
-    val fsDf2 = Rdd.filterStartingBefore(slicest2).filterEndingAfter(sliceet2).slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpfsDf2 = cmpRdd.filterStartingBefore(slicest2).filterEndingAfter(sliceet2).slice(slicest2, sliceet2).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val fsDf2 = Rdd.filterStartingBefore(slicest2).filterEndingAfter(sliceet2).slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext, 2)
+    val cmpfsDf2 = cmpRdd.filterStartingBefore(slicest2).filterEndingAfter(sliceet2).slice(slicest2, sliceet2).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(fsDf2, cmpfsDf2)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (5 years)\n")
     }
@@ -389,8 +389,8 @@ object Main {
     }
     InstantDFAverage(fsDf2, cmpfsDf2, cnt, writer)
 
-    val fsDf3 = Rdd.filterStartingBefore(slicest3).filterEndingAfter(sliceet3).slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpfsDf3 = cmpRdd.filterStartingBefore(slicest3).filterEndingAfter(sliceet3).slice(slicest3, sliceet3).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext)
+    val fsDf3 = Rdd.filterStartingBefore(slicest3).filterEndingAfter(sliceet3).slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext, 2)
+    val cmpfsDf3 = cmpRdd.filterStartingBefore(slicest3).filterEndingAfter(sliceet3).slice(slicest3, sliceet3).fill("linear").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
     if (InstantDFEqual(fsDf3, cmpfsDf3)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (1 years)\n")
     }
@@ -451,16 +451,16 @@ object Main {
     val Rdd = timeSeriesRDD(dtIndex, seriesByFile)
     val cmpRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex)
 
-    val df = Rdd.toObservationsDataFrame(sqlContext)
-    val cmpdf = cmpRdd.toTimeSeriesRDD().toObservationsDataFrame(sqlContext)
-    if (InstantDFEqual(df, cmpdf)) {
-      writer.write("ObservationDF TEST passed\n")
-    }
-    else {
-      writer.write("ObservationDF TEST failed\n")
-      return
-    }
-    InstantDFAverage(df, cmpdf, cnt, writer)
+//    val df = Rdd.toObservationsDataFrame(sqlContext)
+//    val cmpdf = cmpRdd.toTimeSeriesRDD().toObservationsDataFrame(sqlContext)
+//    if (InstantDFEqual(df, cmpdf)) {
+//      writer.write("ObservationDF TEST passed\n")
+//    }
+//    else {
+//      writer.write("ObservationDF TEST failed\n")
+//      return
+//    }
+//    InstantDFAverage(df, cmpdf, cnt, writer)
 
     val filterDf1 = Rdd.filter(_._1.endsWith("Col1")).toObservationsDataFrame(sqlContext)
     val cmpfilterDf1 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col1").toTimeSeriesRDD().toObservationsDataFrame(sqlContext)
