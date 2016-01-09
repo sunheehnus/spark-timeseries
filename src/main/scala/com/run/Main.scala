@@ -270,16 +270,16 @@ object Main {
     val Rdd = timeSeriesRDD(dtIndex, seriesByFile)
     val cmpRdd = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex)
 
-    val df = Rdd.toInstantsDataFrame(sqlContext, 2)
-    val cmpdf = cmpRdd.toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
-    if (InstantDFEqual(df, cmpdf)) {
-      writer.write("InstantDF TEST passed\n")
-    }
-    else {
-      writer.write("InstantDF TEST failed\n")
-      return
-    }
-    InstantDFAverage(df, cmpdf, cnt, writer)
+//    val df = Rdd.toInstantsDataFrame(sqlContext, 2)
+//    val cmpdf = cmpRdd.toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
+//    if (InstantDFEqual(df, cmpdf)) {
+//      writer.write("InstantDF TEST passed\n")
+//    }
+//    else {
+//      writer.write("InstantDF TEST failed\n")
+//      return
+//    }
+//    InstantDFAverage(df, cmpdf, cnt, writer)
 
     val filterDf1 = Rdd.filter(_._1.endsWith("Col1")).toInstantsDataFrame(sqlContext, 2)
     val cmpfilterDf1 = sc.fromRedisKeyPattern(redisNode, prefix + "_*").getRedisTimeSeriesRDD(dtIndex).filterKeys(".*Col1").toTimeSeriesRDD().toInstantsDataFrame(sqlContext, 2)
