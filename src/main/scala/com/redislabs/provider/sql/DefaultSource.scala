@@ -96,6 +96,8 @@ case class InstantScan(parameters: Map[String, String])
     return rtsRdd.toTimeSeriesRDD().keys.map(StructField(_, DoubleType, nullable = true))
   }
 
+  override val needConversion: Boolean = false
+
   val schema: StructType = StructType(getTimeSchema +: getColSchema)
 
   def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
@@ -114,24 +116,9 @@ case class InstantScan(parameters: Map[String, String])
     if (parameters.get("mapSeries") != None) {
       parameters("mapSeries").split(",").foreach(ms => rtsRdd = rtsRdd.mapSeries(sqlContext.getMapSeries(ms.trim)))
     }
-//    rtsRdd.toTimeSeriesRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
-//      candidates => requiredColumnsIndex.map(candidates(_))
-//    }.map(x => Row.fromSeq(x.toSeq))
-    rtsRdd.toTimeSeriesRDD().toInstants().mapPartitions { case iter =>
-      iter.map(x => new Timestamp(x._1.getMillis) +: x._2.toArray).map {
-        candidates => requiredColumnsIndex.map(candidates(_))
-      }.map(x => Row.fromSeq(x.toSeq))
-    }
-//    rtsRdd.toTimeSeriesRDD().toInstants().mapPartitions { case iter =>
-//        new Iterator[Row] {
-//          override def hasNext: Boolean = iter.hasNext
-//          override def next(): Row = {
-//            val nxt = iter.next
-//            val candidate = new Timestamp(nxt._1.getMillis()) +: nxt._2.toArray
-//            Row.fromSeq(requiredColumnsIndex.map(candidate(_)).toSeq)
-//          }
-//        }
-//    }
+    rtsRdd.toTimeSeriesRDD().toInstants().map(x => new Timestamp(x._1.getMillis()) +: x._2.toArray).map{
+      candidates => requiredColumnsIndex.map(candidates(_))
+    }.map(x => Row.fromSeq(x.toSeq))
   }
 }
 
@@ -146,6 +133,8 @@ case class ObservationScan(parameters: Map[String, String])
   val tsCol: String = parameters.getOrElse("tsCol", "timestamp")
   val keyCol: String = parameters.getOrElse("keyCol", "key")
   val valueCol: String = parameters.getOrElse("valueCol", "value")
+
+  override val needConversion: Boolean = false
 
   val schema = new StructType(Array(
     new StructField(tsCol, TimestampType),
