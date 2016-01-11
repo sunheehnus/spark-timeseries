@@ -37,7 +37,7 @@ object YahooParser {
   }
 
   def yahooFiles(dir: String, sc: SparkContext): RDD[TimeSeries] = {
-    sc.wholeTextFiles(dir).map { case (path, text) =>
+    sc.wholeTextFiles(dir, 3).map { case (path, text) =>
       YahooParser.yahooStringToTimeSeries(text, path.split('/').last)
     }
   }
