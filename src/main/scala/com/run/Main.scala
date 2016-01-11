@@ -274,7 +274,7 @@ object Main {
 
     val df = Rdd.toInstantsDataFrame(sqlContext, 2)
     val cmpdf1 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "partition" -> "2"))
-    val cmpdf = cmpdf1.filter(df.col("instant")>=startTimeStamp).filter(df.col("instant")<=endTimeStamp)
+    val cmpdf = cmpdf1.filter(cmpdf1.col("instant")>=startTimeStamp).filter(cmpdf1.col("instant")<=endTimeStamp)
     if (InstantDFEqual(df, cmpdf)) {
       writer.write("InstantDF TEST passed\n")
     }
@@ -488,7 +488,7 @@ object Main {
 
     val df = Rdd.toObservationsDataFrame(sqlContext)
     val cmpdf1 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "partition" -> "2"))
-    val cmpdf = cmpdf1.filter(df.col("timestamp")>=startTimeStamp).filter(df.col("timestamp")<=endTimeStamp)
+    val cmpdf = cmpdf1.filter(cmpdf1.col("timestamp")>=startTimeStamp).filter(cmpdf1.col("timestamp")<=endTimeStamp)
     if (InstantDFEqual(df, cmpdf)) {
       writer.write("InstantDF TEST passed\n")
     }
