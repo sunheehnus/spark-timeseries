@@ -105,7 +105,12 @@ case class InstantScan(parameters: Map[String, String])
     val fp = new FilterParser(filters, Map("timestamp" -> "instant"))
     val dtindex = fp.getDateTimeIndex(frequency)
 
-    var rtsRdd = sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
+    var rtsRdd = {
+      if (parameters.get("partition") != None)
+        sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*", parameters("partition").toInt).getRedisTimeSeriesRDD(dtindex)
+      else
+        sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
+    }
 
     if (parameters.get("keyPattern") != None)
       rtsRdd = rtsRdd.filterKeys(parameters("keyPattern"))
@@ -147,7 +152,12 @@ case class ObservationScan(parameters: Map[String, String])
     val fp = new FilterParser(filters, Map("timestamp" -> tsCol))
     val dtindex = fp.getDateTimeIndex(frequency)
 
-    var rtsRdd = sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
+    var rtsRdd = {
+      if (parameters.get("partition") != None)
+        sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*", parameters("partition").toInt).getRedisTimeSeriesRDD(dtindex)
+      else
+        sqlContext.sparkContext.fromRedisKeyPattern((host, port), prefix + "_*").getRedisTimeSeriesRDD(dtindex)
+    }
 
     if (parameters.get("keyPattern") != None)
       rtsRdd = rtsRdd.filterKeys(parameters("keyPattern"))
