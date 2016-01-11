@@ -82,9 +82,8 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   }
 
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
-    val miArr = index.toMillisArray
-    val st = miArr(0)
-    val et = miArr(miArr.length - 1)
+    val st = index.first.getMillis
+    val et = index.last.getMillis
     groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
@@ -101,33 +100,33 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                 val prefix = x.substring(prefixStartPos, prefixEndPos)
                 val cols = x.substring(prefixEndPos + 9).split(",").map(prefix + _)
                 
-                val keysWithCols = if (pattern != null) cols.zip(0 until cols.size).filter(x => x._1.matches(pattern)) else cols.zip(0 until cols.size)
+                val keysWithCols = if (pattern != null) cols.zipWithIndex.filter(x => x._1.matches(pattern)) else cols.zipWithIndex
+                val (selectedKeys, selectedCols) = keysWithCols.unzip
                 
                 if (keysWithCols.size != 0)
                   client.zrangeByScoreWithScores(x, st, et)
                 val list = if (keysWithCols.size != 0) client.getMultiBulkReply else null
-                
-                (0 until keysWithCols.size).map{
-                  i => {
-                    val key = keysWithCols(i)._1
-                    val col = keysWithCols(i)._2
-                    val arr = new Array[Double](index.size)
-                    for (i <- 0 until index.size) {
-                      arr(i) = Double.NaN
-                    }
-                    
-                    val it = list.iterator
-                    while (it.hasNext) {
-                      val elem = it.next
-                      val time = it.next.toLong
-                      arr(index.locAtDateTime(time)) = elem.substring(elem.indexOf('_') + 1).split(",")(col).toDouble
-                    }
-                    if (f == null)
-                      (key, new DenseVector(arr))
-                    else
-                      (key, f(new DenseVector(arr)))
-                  }   
-                }          
+
+                if (selectedCols.size != 0) {
+                  val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
+                  for (array <- arrays) java.util.Arrays.fill(array, Double.NaN)
+
+                  val it = list.iterator
+                  while (it.hasNext) {
+                    val elem = it.next
+                    val pos = index.locAtDateTime(it.next.toLong)
+                    val values = elem.substring(elem.indexOf('_') + 1).split(",")
+                    for (i <- 0 until selectedCols.size) arrays(i)(pos) = values(selectedCols(i)).toDouble
+                  }
+                  if (f == null) {
+                    for (i <- 0 until selectedCols.size) yield (selectedKeys(i), new DenseVector(arrays(i)))
+                  }
+                  else {
+                    for (i <- 0 until selectedCols.size) yield (selectedKeys(i), f(new DenseVector(arrays(i))))
+                  }
+                }
+                else
+                  null
               }
           }
           jedis.close
