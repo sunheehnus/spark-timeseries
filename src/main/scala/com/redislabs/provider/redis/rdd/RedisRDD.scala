@@ -103,15 +103,12 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                 val keysWithCols = if (pattern != null) cols.zipWithIndex.filter(x => x._1.matches(pattern)) else cols.zipWithIndex
                 val (selectedKeys, selectedCols) = keysWithCols.unzip
                 
-                if (keysWithCols.size != 0)
-                  client.zrangeByScoreWithScores(x, st, et)
-                val list = if (keysWithCols.size != 0) client.getMultiBulkReply else null
-
                 if (selectedCols.size != 0) {
                   val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
                   for (array <- arrays) java.util.Arrays.fill(array, Double.NaN)
 
-                  val it = list.iterator
+                  client.zrangeByScoreWithScores(x, st, et)
+                  val it = client.getMultiBulkReply.iterator
                   while (it.hasNext) {
                     val elem = it.next
                     val pos = index.locAtDateTime(it.next.toLong)
@@ -126,7 +123,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                   }
                 }
                 else
-                  null
+                  Iterator()
               }
           }
           jedis.close
