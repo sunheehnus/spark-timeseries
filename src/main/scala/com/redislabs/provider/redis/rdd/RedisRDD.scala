@@ -133,7 +133,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                 if (selectedCols.size != 0) {
                   sTime = System.currentTimeMillis
                   client.zrangeByScoreWithScores(x, st, et)
-                  val it = client.getMultiBulkReply.iterator
+                  val list = client.getMultiBulkReply
                   eTime = System.currentTimeMillis
                   timeBuild += eTime - sTime
 
@@ -141,6 +141,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                   val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
                   for (array <- arrays) java.util.Arrays.fill(array, Double.NaN)
 
+                  val it = list.iterator
                   while (it.hasNext) {
                     val elem = it.next
                     val pos = index.locAtDateTime(it.next.toLong)
