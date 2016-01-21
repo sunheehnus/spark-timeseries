@@ -79,17 +79,28 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   }
 
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
+    import java.util._  
+    import java.io._
+    val rnd = new Random
+    val writer = new PrintWriter(new File(rnd.nextInt(99999999) + "TEST" + rnd.nextInt(99999999) + ".out"))
+    var time_fetch = 0l
+    var time_build = 0l
+    
+    val time_start1 = System.currentTimeMillis
     val miArr = index.toMillisArray
     val st = miArr(0)
     val et = miArr(miArr.length - 1)
+    val time_end1 = System.currentTimeMillis
     groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
+          val time_start2 = System.currentTimeMillis
           val jedis = new Jedis(x._1._1, x._1._2)
           val zsetKeys = filterKeysByType(jedis, x._2, "zset")
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
           val client = new Client(x._1._1, x._1._2)
+          time_fetch += System.currentTimeMillis - time_start2
           val res = endTimeKeys.flatMap {
             x =>
               {
@@ -100,11 +111,15 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                 
                 val keysWithCols = if (pattern != null) cols.zip(0 until cols.size).filter(x => x._1.matches(pattern)) else cols.zip(0 until cols.size)
                 
+                val time_start3 = System.currentTimeMillis
                 if (keysWithCols.size != 0)
                   client.zrangeByScoreWithScores(x, st, et)
                 val list = if (keysWithCols.size != 0) client.getMultiBulkReply else null
                 
-                (0 until keysWithCols.size).map{
+                time_fetch += System.currentTimeMillis - time_start3
+                
+                val time_start4: Long = System.currentTimeMillis
+                val re = (0 until keysWithCols.size).map{
                   i => {
                     val key = keysWithCols(i)._1
                     val col = keysWithCols(i)._2
@@ -124,9 +139,18 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                     else
                       (key, f(new DenseVector(arr)))
                   }   
-                }          
+                }    
+                time_build += (System.currentTimeMillis) - time_start4
+                re
               }
           }
+          val tf = time_fetch / 1000.0
+          val tb = time_build / 1000.0
+          val rate = time_fetch * 1.0 / (time_fetch + time_build)
+          writer.write(f"Fetch: ${tf}%.2f s\n")
+          writer.write(f"Build: ${tb}%.2f s\n")
+          writer.write(f"Build: ${rate}%.2f s\n")
+          writer.close
           jedis.close
           client.close
           res
