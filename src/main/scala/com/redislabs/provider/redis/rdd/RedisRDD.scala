@@ -1,5 +1,7 @@
 package com.redislabs.provider.redis.rdd
 
+import java.io.PrintWriter
+import java.io.File
 import java.net.InetAddress
 import java.util
 
@@ -36,8 +38,11 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   }
   override def getPartitions: Array[Partition] = prev.partitions
 
+  var idx = -1;
+
   override def compute(split: Partition, context: TaskContext): Iterator[(String, Vector[Double])] = {
     val partition: RedisPartition = split.asInstanceOf[RedisPartition]
+    idx = partition.index
     val sPos = partition.slots._1
     val ePos = partition.slots._2
     val nodes = partition.redisConfig.getNodesBySlots(sPos, ePos)
@@ -84,43 +89,73 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
     val st = index.first.getMillis
     val et = index.last.getMillis
-    groupKeysByNode(nodes, keys).flatMap {
+    var timeType: Long = 0
+    var timeStartTime: Long = 0
+    var timeEndTime: Long = 0
+    var timeFetch: Long = 0
+    var timeBuild: Long = 0
+    var sTime: Long = 0
+    var eTime: Long = 0
+    val res = groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
           val jedis = new Jedis(x._1._1, x._1._2)
+          sTime = System.currentTimeMillis
           val zsetKeys = filterKeysByType(jedis, x._2, "zset")
+          eTime = System.currentTimeMillis
+          timeType += eTime - sTime
+
+          sTime = System.currentTimeMillis
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
+          eTime = System.currentTimeMillis
+          timeStartTime += eTime - sTime
+
+          sTime = System.currentTimeMillis
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
+          eTime = System.currentTimeMillis
+          timeEndTime += eTime - sTime
+
           val client = new Client(x._1._1, x._1._2)
           val res = endTimeKeys.flatMap {
             x =>
               {
+                sTime = System.currentTimeMillis
                 val prefixStartPos = x.indexOf("_RedisTS_") + 9
                 val prefixEndPos = x.indexOf("_RedisTS_", prefixStartPos)
                 val prefix = x.substring(prefixStartPos, prefixEndPos)
                 val cols = x.substring(prefixEndPos + 9).split(",").map(prefix + _)
-                
+
                 val keysWithCols = if (pattern != null) cols.zipWithIndex.filter(x => x._1.matches(pattern)) else cols.zipWithIndex
                 val (selectedKeys, selectedCols) = keysWithCols.unzip
-                
+                eTime = System.currentTimeMillis
+                timeFetch += eTime - sTime
+
                 if (selectedCols.size != 0) {
+                  sTime = System.currentTimeMillis
+                  client.zrangeByScoreWithScores(x, st, et)
+                  val it = client.getMultiBulkReply.iterator
+                  eTime = System.currentTimeMillis
+                  timeBuild += eTime - sTime
+
+                  sTime = System.currentTimeMillis
                   val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
                   for (array <- arrays) java.util.Arrays.fill(array, Double.NaN)
 
-                  client.zrangeByScoreWithScores(x, st, et)
-                  val it = client.getMultiBulkReply.iterator
                   while (it.hasNext) {
                     val elem = it.next
                     val pos = index.locAtDateTime(it.next.toLong)
                     val values = elem.substring(elem.indexOf('_') + 1).split(",")
                     for (i <- 0 until selectedCols.size) arrays(i)(pos) = values(selectedCols(i)).toDouble
                   }
-                  if (f == null) {
+                  val res = if (f == null) {
                     for (i <- 0 until selectedCols.size) yield (selectedKeys(i), new DenseVector(arrays(i)))
                   }
                   else {
                     for (i <- 0 until selectedCols.size) yield (selectedKeys(i), f(new DenseVector(arrays(i))))
                   }
+                  eTime = System.currentTimeMillis
+                  timeBuild += eTime - sTime
+                  res
                 }
                 else
                   Iterator()
@@ -131,6 +166,22 @@ class RedisTimeSeriesRDD(prev: RDD[String],
           res
         }
     }.iterator
+    val writer1 = new PrintWriter(new File("/tmp/filterType_partition#" + idx))
+    writer1.write(f"filterType_partition#${idx}%d: ${timeType}%d ms\n")
+    writer1.close
+    val writer2 = new PrintWriter(new File("/tmp/filterStartTime_partition#" + idx))
+    writer2.write(f"filterStartTime_partition#${idx}%d: ${timeStartTime}%d ms\n")
+    writer2.close
+    val writer3 = new PrintWriter(new File("/tmp/filterEndTime_partition#" + idx))
+    writer3.write(f"filterEndTime_partition#${idx}%d: ${timeEndTime}%d ms\n")
+    writer3.close
+    val writer4 = new PrintWriter(new File("/tmp/Fetch_partition#" + idx))
+    writer4.write(f"Fetch_partition#${idx}%d: ${timeFetch}%d ms\n")
+    writer4.close
+    val writer5 = new PrintWriter(new File("/tmp/Build_partition#" + idx))
+    writer5.write(f"Build_partition#${idx}%d: ${timeBuild}%d ms\n")
+    writer5.close
+    res
   }
   
   //def collectAsTimeSeries()
@@ -198,12 +249,22 @@ class RedisKeysRDD(sc: SparkContext,
     }).toArray
   }
 
+  var idx = -1;
+
   override def compute(split: Partition, context: TaskContext): Iterator[String] = {
+    idx = split.index;
+
     val partition: RedisPartition = split.asInstanceOf[RedisPartition]
     val sPos = partition.slots._1
     val ePos = partition.slots._2
     val nodes = partition.redisConfig.getNodesBySlots(sPos, ePos)
-    getKeys(nodes, sPos, ePos, keyPattern).iterator;
+    val writer = new PrintWriter(new File("/tmp/getkeys_partition#" + idx))
+    val startTime = System.currentTimeMillis
+    val keys = getKeys(nodes, sPos, ePos, keyPattern).iterator;
+    val endTime = System.currentTimeMillis
+    writer.write(f"getkeys_partition#${idx}%d: ${endTime - startTime}%d ms\n")
+    writer.close
+    keys
   }
   
   def getRedisTimeSeriesRDD(index: DateTimeIndex) = {
@@ -265,12 +326,11 @@ trait Keys {
       nodes.foreach(node => {
         val jedis = new Jedis(node._1, node._2)
         val params = new ScanParams().`match`(keyPattern)
-        val res = keys.addAll(scanKeys(jedis, params).filter(key => {
+        keys.addAll(scanKeys(jedis, params).filter(key => {
           val slot = JedisClusterCRC16.getSlot(key)
           slot >= sPos && slot <= ePos
         }))
         jedis.close
-        res
       })
     } else {
       val slot = JedisClusterCRC16.getSlot(keyPattern)
