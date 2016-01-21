@@ -135,7 +135,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                   client.zrangeByScoreWithScores(x, st, et)
                   val list = client.getMultiBulkReply
                   eTime = System.currentTimeMillis
-                  timeBuild += eTime - sTime
+                  timeFetch += eTime - sTime
 
                   sTime = System.currentTimeMillis
                   val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
