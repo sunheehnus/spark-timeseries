@@ -30,13 +30,13 @@ object Main {
 
   def averageTime(rdd1: RDD[(String, Vector[Double])], rdd2: RDD[(String, Vector[Double])], cnt: Int, writer: java.io.PrintWriter) {
     val startTimerdd1 = System.currentTimeMillis
-    (0 until cnt).foreach(x => rdd1.collect())
+    (0 until cnt).foreach(x => rdd1.foreachPartition(partition => partition.toArray))
     val endTimerdd1 = System.currentTimeMillis
     val period1 = (endTimerdd1 - startTimerdd1) / 1000.0 / cnt
     writer.write(f"TimeSeriesRDD: ${period1}%.2f s\n")
 
     val startTimerdd2 = System.currentTimeMillis
-    (0 until cnt).foreach(x => rdd2.collect())
+    (0 until cnt).foreach(x => rdd2.foreachPartition(partition => partition.toArray))
     val endTimerdd2 = System.currentTimeMillis
     val period2 = (endTimerdd2 - startTimerdd2) / 1000.0 / cnt
     writer.write(f"RedisTimeSeriesRDD: ${period2}%.2f s\n")
@@ -226,14 +226,14 @@ object Main {
 
   def InstantDFAverage(df1: DataFrame, df2: DataFrame, cnt: Int, writer: java.io.PrintWriter) {
     val startTimedf1 = System.currentTimeMillis
-    (0 until cnt).foreach(x => df1.collect())
+    (0 until cnt).foreach(x => df1.foreachPartition(partition => partition.toArray))
     val endTimedf1 = System.currentTimeMillis
     val period1 = (endTimedf1 - startTimedf1) / 1000.0 / cnt
     writer.write(f"TimeSeries: ${period1}%.2f s\n")
     writer.flush
 
     val startTimedf2 = System.currentTimeMillis
-    (0 until cnt).foreach(x => df2.collect())
+    (0 until cnt).foreach(x => df2.foreachPartition(partition => partition.toArray))
     val endTimedf2 = System.currentTimeMillis
     val period2 = (endTimedf2 - startTimedf2) / 1000.0 / cnt
     writer.write(f"RedisTimeSeries: ${period2}%.2f s\n")
@@ -440,14 +440,14 @@ object Main {
 
   def ObservationDFAverage(df1: DataFrame, df2: DataFrame, cnt: Int, writer: java.io.PrintWriter) {
     val startTimedf1 = System.currentTimeMillis
-    (0 until cnt).foreach(x => df1.collect())
+    (0 until cnt).foreach(x => df1.foreachPartition(partition => partition.toArray))
     val endTimedf1 = System.currentTimeMillis
     val period1 = (endTimedf1 - startTimedf1) / 1000.0 / cnt
     writer.write(f"TimeSeries: ${period1}%.2f s\n")
     writer.flush
 
     val startTimedf2 = System.currentTimeMillis
-    (0 until cnt).foreach(x => df2.collect())
+    (0 until cnt).foreach(x => df2.foreachPartition(partition => partition.toArray))
     val endTimedf2 = System.currentTimeMillis
     val period2 = (endTimedf2 - startTimedf2) / 1000.0 / cnt
     writer.write(f"RedisTimeSeries: ${period2}%.2f s\n")
@@ -656,15 +656,15 @@ object Main {
     val conf = new SparkConf().setAppName("BENCHMARK FOR TEST #" + pos)
     val sc = new SparkContext(conf)
 
-    val writer1 = new PrintWriter(new File(path + "/DiskBased.out"))
-    val writer2 = new PrintWriter(new File(path + "/Serialized.out"))
-    val writer3 = new PrintWriter(new File(path + "/Tachyon.out"))
-    val writer4 = new PrintWriter(new File(path + "/instant_DiskBased.out"))
-    val writer5 = new PrintWriter(new File(path + "/instant_Serialized.out"))
-    val writer6 = new PrintWriter(new File(path + "/instant_Tachyon.out"))
-    val writer7 = new PrintWriter(new File(path + "/observation_DiskBased.out"))
-    val writer8 = new PrintWriter(new File(path + "/observation_Serialized.out"))
-    val writer9 = new PrintWriter(new File(path + "/observation_Tachyon.out"))
+    val writer1 = new PrintWriter(new File("/tmp/" + "/DiskBased.out"))
+    val writer2 = new PrintWriter(new File("/tmp/" + "/Serialized.out"))
+    val writer3 = new PrintWriter(new File("/tmp/" + "/Tachyon.out"))
+    val writer4 = new PrintWriter(new File("/tmp/" + "/instant_DiskBased.out"))
+    val writer5 = new PrintWriter(new File("/tmp/" + "/instant_Serialized.out"))
+    val writer6 = new PrintWriter(new File("/tmp/" + "/instant_Tachyon.out"))
+    val writer7 = new PrintWriter(new File("/tmp/" + "/observation_DiskBased.out"))
+    val writer8 = new PrintWriter(new File("/tmp/" + "/observation_Serialized.out"))
+    val writer9 = new PrintWriter(new File("/tmp/" + "/observation_Tachyon.out"))
     (pos to pos).foreach{ i => {
       ImportToRedisServer(path + "/TEST" + i.toString, "TEST" + i.toString, sc, ("127.0.0.1", 6379))
       TEST(sc, writer1, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
