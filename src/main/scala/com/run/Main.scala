@@ -271,7 +271,7 @@ object Main {
     val Rdd = timeSeriesRDD(dtIndex, seriesByFile)
 
     val df = Rdd.toInstantsDataFrame(sqlContext)
-    val cmpdf1 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant"))
+    val cmpdf1 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "host" -> "172.31.20.20"))
     val cmpdf = cmpdf1.filter(cmpdf1.col("instant")>=startTimeStamp).filter(cmpdf1.col("instant")<=endTimeStamp)
     if (InstantDFEqual(df, cmpdf)) {
       writer.write("InstantDF TEST passed\n")
@@ -283,7 +283,7 @@ object Main {
     InstantDFAverage(df, cmpdf, cnt, writer)
 
     val filterDf1 = Rdd.filter(_._1.endsWith("Col1")).toInstantsDataFrame(sqlContext)
-    val cmpfilterDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "keyPattern" -> ".*Col1"))
+    val cmpfilterDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "keyPattern" -> ".*Col1", "host" -> "172.31.20.20"))
     val cmpfilterDf1 = cmpfilterDf11.filter(cmpfilterDf11.col("instant")>=startTimeStamp).filter(cmpfilterDf11.col("instant")<=endTimeStamp)
     if (InstantDFEqual(filterDf1, cmpfilterDf1)) {
       writer.write("Filter by Regex InstantDF TEST passed\n")
@@ -295,7 +295,7 @@ object Main {
     InstantDFAverage(filterDf1, cmpfilterDf1, cnt, writer)
 
     val filterDf2 = Rdd.filter(_._1.endsWith("Col8")).toInstantsDataFrame(sqlContext)
-    val cmpfilterDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "keyPattern" -> ".*Col8"))
+    val cmpfilterDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "keyPattern" -> ".*Col8", "host" -> "172.31.20.20"))
     val cmpfilterDf2 = cmpfilterDf21.filter(cmpfilterDf21.col("instant")>=startTimeStamp).filter(cmpfilterDf21.col("instant")<=endTimeStamp)
     if (InstantDFEqual(filterDf2, cmpfilterDf2)) {
       writer.write("Filter by Regex InstantDF TEST passed\n")
@@ -309,7 +309,7 @@ object Main {
     val startTime2 = new DateTime("1983-10-10", UTC)
     val startTimeStr2 = "1983-10-10"
     var filteredDfStart2 = Rdd.filterStartingBefore(startTime2).toInstantsDataFrame(sqlContext)
-    val cmpfilteredDfStart21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "startingBefore" -> startTimeStr2))
+    val cmpfilteredDfStart21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "startingBefore" -> startTimeStr2, "host" -> "172.31.20.20"))
     val cmpfilteredDfStart2 = cmpfilteredDfStart21.filter(cmpfilteredDfStart21.col("instant")>=startTimeStamp).filter(cmpfilteredDfStart21.col("instant")<=endTimeStamp)
     if (InstantDFEqual(filteredDfStart2, cmpfilteredDfStart2)) {
       writer.write("Filter by StartTime InstantDF TEST passed\n")
@@ -324,7 +324,7 @@ object Main {
     val endTime2 = new DateTime("2013-11-11", UTC)
     val endTimeStr2 = "2013-11-11"
     var filteredDfEnd2 = Rdd.filterEndingAfter(endTime2).toInstantsDataFrame(sqlContext)
-    val cmpfilteredDfEnd21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "endingAfter" -> endTimeStr2))
+    val cmpfilteredDfEnd21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "endingAfter" -> endTimeStr2, "host" -> "172.31.20.20"))
     val cmpfilteredDfEnd2 = cmpfilteredDfEnd21.filter(cmpfilteredDfEnd21.col("instant")>=startTimeStamp).filter(cmpfilteredDfEnd21.col("instant")<=endTimeStamp)
     if (InstantDFEqual(filteredDfEnd2, cmpfilteredDfEnd2)) {
       writer.write("Filter by EndTime InstantDF TEST passed\n")
@@ -344,7 +344,7 @@ object Main {
     val sliceet1Timestamp = new Timestamp(sliceet1.getMillis)
 
     val slicedDf1 = Rdd.slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpslicedDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear"))
+    val cmpslicedDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "host" -> "172.31.20.20"))
     val cmpslicedDf1 = cmpslicedDf11.filter(cmpslicedDf11.col("instant")>=slicest1Timestamp).filter(cmpslicedDf11.col("instant")<=sliceet1Timestamp)
     if (InstantDFEqual(slicedDf1, cmpslicedDf1)) {
       writer.write("Slice InstantDF TEST passed (10 years)\n")
@@ -364,7 +364,7 @@ object Main {
     val sliceet2Timestamp = new Timestamp(sliceet2.getMillis)
 
     val slicedDf2 = Rdd.slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpslicedDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear"))
+    val cmpslicedDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "host" -> "172.31.20.20"))
     val cmpslicedDf2 = cmpslicedDf21.filter(cmpslicedDf21.col("instant")>=slicest2Timestamp).filter(cmpslicedDf21.col("instant")<=sliceet2Timestamp)
     if (InstantDFEqual(slicedDf2, cmpslicedDf2)) {
       writer.write("Slice InstantDF TEST passed (5 years)\n")
@@ -384,7 +384,7 @@ object Main {
     val sliceet3Timestamp = new Timestamp(sliceet3.getMillis)
 
     val slicedDf3 = Rdd.slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpslicedDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear"))
+    val cmpslicedDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "host" -> "172.31.20.20"))
     val cmpslicedDf3 = cmpslicedDf31.filter(cmpslicedDf31.col("instant")>=slicest3Timestamp).filter(cmpslicedDf31.col("instant")<=sliceet3Timestamp)
     if (InstantDFEqual(slicedDf3, cmpslicedDf3)) {
       writer.write("Slice InstantDF TEST passed (1 years)\n")
@@ -396,7 +396,7 @@ object Main {
     InstantDFAverage(slicedDf3, cmpslicedDf3, cnt, writer)
 
     val fsDf1 = Rdd.filterStartingBefore(slicest1).filterEndingAfter(sliceet1).slice(slicest1, sliceet1).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpfsDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "startingBefore" -> slicest1Str, "endingAfter" -> sliceet1Str))
+    val cmpfsDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "startingBefore" -> slicest1Str, "endingAfter" -> sliceet1Str, "host" -> "172.31.20.20"))
     val cmpfsDf1 = cmpfsDf11.filter(cmpfsDf11.col("instant")>=slicest1Timestamp).filter(cmpfsDf11.col("instant")<=sliceet1Timestamp)
     if (InstantDFEqual(fsDf1, cmpfsDf1)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (10 years)\n")
@@ -408,7 +408,7 @@ object Main {
     InstantDFAverage(fsDf1, cmpfsDf1, cnt, writer)
 
     val fsDf2 = Rdd.filterStartingBefore(slicest2).filterEndingAfter(sliceet2).slice(slicest2, sliceet2).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpfsDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "startingBefore" -> slicest2Str, "endingAfter" -> sliceet2Str))
+    val cmpfsDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "startingBefore" -> slicest2Str, "endingAfter" -> sliceet2Str, "host" -> "172.31.20.20"))
     val cmpfsDf2 = cmpfsDf21.filter(cmpfsDf21.col("instant")>=slicest2Timestamp).filter(cmpfsDf21.col("instant")<=sliceet2Timestamp)
     if (InstantDFEqual(fsDf2, cmpfsDf2)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (5 years)\n")
@@ -420,7 +420,7 @@ object Main {
     InstantDFAverage(fsDf2, cmpfsDf2, cnt, writer)
 
     val fsDf3 = Rdd.filterStartingBefore(slicest3).filterEndingAfter(sliceet3).slice(slicest3, sliceet3).fill("linear").toInstantsDataFrame(sqlContext)
-    val cmpfsDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "startingBefore" -> slicest3Str, "endingAfter" -> sliceet3Str))
+    val cmpfsDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "instant", "mapSeries" -> "linear", "startingBefore" -> slicest3Str, "endingAfter" -> sliceet3Str, "host" -> "172.31.20.20"))
     val cmpfsDf3 = cmpfsDf31.filter(cmpfsDf31.col("instant")>=slicest3Timestamp).filter(cmpfsDf31.col("instant")<=sliceet3Timestamp)
     if (InstantDFEqual(fsDf3, cmpfsDf3)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (1 years)\n")
@@ -483,7 +483,7 @@ object Main {
     val Rdd = timeSeriesRDD(dtIndex, seriesByFile)
 
     val df = Rdd.toObservationsDataFrame(sqlContext)
-    val cmpdf1 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation"))
+    val cmpdf1 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "host" -> "172.31.20.20"))
     val cmpdf = cmpdf1.filter(cmpdf1.col("timestamp")>=startTimeStamp).filter(cmpdf1.col("timestamp")<=endTimeStamp)
     if (InstantDFEqual(df, cmpdf)) {
       writer.write("InstantDF TEST passed\n")
@@ -495,7 +495,7 @@ object Main {
     InstantDFAverage(df, cmpdf, cnt, writer)
 
     val filterDf1 = Rdd.filter(_._1.endsWith("Col1")).toObservationsDataFrame(sqlContext)
-    val cmpfilterDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "keyPattern" -> ".*Col1"))
+    val cmpfilterDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "keyPattern" -> ".*Col1", "host" -> "172.31.20.20"))
     val cmpfilterDf1 = cmpfilterDf11.filter(cmpfilterDf11.col("timestamp")>=startTimeStamp).filter(cmpfilterDf11.col("timestamp")<=endTimeStamp)
     if (InstantDFEqual(filterDf1, cmpfilterDf1)) {
       writer.write("Filter by Regex InstantDF TEST passed\n")
@@ -507,7 +507,7 @@ object Main {
     InstantDFAverage(filterDf1, cmpfilterDf1, cnt, writer)
 
     val filterDf2 = Rdd.filter(_._1.endsWith("Col8")).toObservationsDataFrame(sqlContext)
-    val cmpfilterDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "keyPattern" -> ".*Col8"))
+    val cmpfilterDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "keyPattern" -> ".*Col8", "host" -> "172.31.20.20"))
     val cmpfilterDf2 = cmpfilterDf21.filter(cmpfilterDf21.col("timestamp")>=startTimeStamp).filter(cmpfilterDf21.col("timestamp")<=endTimeStamp)
     if (InstantDFEqual(filterDf2, cmpfilterDf2)) {
       writer.write("Filter by Regex InstantDF TEST passed\n")
@@ -521,7 +521,7 @@ object Main {
     val startTime2 = new DateTime("1983-10-10", UTC)
     val startTimeStr2 = "1983-10-10"
     var filteredDfStart2 = Rdd.filterStartingBefore(startTime2).toObservationsDataFrame(sqlContext)
-    val cmpfilteredDfStart21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "startingBefore" -> startTimeStr2))
+    val cmpfilteredDfStart21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "startingBefore" -> startTimeStr2, "host" -> "172.31.20.20"))
     val cmpfilteredDfStart2 = cmpfilteredDfStart21.filter(cmpfilteredDfStart21.col("timestamp")>=startTimeStamp).filter(cmpfilteredDfStart21.col("timestamp")<=endTimeStamp)
     if (InstantDFEqual(filteredDfStart2, cmpfilteredDfStart2)) {
       writer.write("Filter by StartTime InstantDF TEST passed\n")
@@ -536,7 +536,7 @@ object Main {
     val endTime2 = new DateTime("2013-11-11", UTC)
     val endTimeStr2 = "2013-11-11"
     var filteredDfEnd2 = Rdd.filterEndingAfter(endTime2).toObservationsDataFrame(sqlContext)
-    val cmpfilteredDfEnd21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "endingAfter" -> endTimeStr2))
+    val cmpfilteredDfEnd21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "endingAfter" -> endTimeStr2, "host" -> "172.31.20.20"))
     val cmpfilteredDfEnd2 = cmpfilteredDfEnd21.filter(cmpfilteredDfEnd21.col("timestamp")>=startTimeStamp).filter(cmpfilteredDfEnd21.col("timestamp")<=endTimeStamp)
     if (InstantDFEqual(filteredDfEnd2, cmpfilteredDfEnd2)) {
       writer.write("Filter by EndTime InstantDF TEST passed\n")
@@ -556,7 +556,7 @@ object Main {
     val sliceet1Timestamp = new Timestamp(sliceet1.getMillis)
 
     val slicedDf1 = Rdd.slice(slicest1, sliceet1).fill("linear").toObservationsDataFrame(sqlContext)
-    val cmpslicedDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear"))
+    val cmpslicedDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "host" -> "172.31.20.20"))
     val cmpslicedDf1 = cmpslicedDf11.filter(cmpslicedDf11.col("timestamp")>=slicest1Timestamp).filter(cmpslicedDf11.col("timestamp")<=sliceet1Timestamp)
     if (InstantDFEqual(slicedDf1, cmpslicedDf1)) {
       writer.write("Slice InstantDF TEST passed (10 years)\n")
@@ -576,7 +576,7 @@ object Main {
     val sliceet2Timestamp = new Timestamp(sliceet2.getMillis)
 
     val slicedDf2 = Rdd.slice(slicest2, sliceet2).fill("linear").toObservationsDataFrame(sqlContext)
-    val cmpslicedDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear"))
+    val cmpslicedDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "host" -> "172.31.20.20"))
     val cmpslicedDf2 = cmpslicedDf21.filter(cmpslicedDf21.col("timestamp")>=slicest2Timestamp).filter(cmpslicedDf21.col("timestamp")<=sliceet2Timestamp)
     if (InstantDFEqual(slicedDf2, cmpslicedDf2)) {
       writer.write("Slice InstantDF TEST passed (5 years)\n")
@@ -596,7 +596,7 @@ object Main {
     val sliceet3Timestamp = new Timestamp(sliceet3.getMillis)
 
     val slicedDf3 = Rdd.slice(slicest3, sliceet3).fill("linear").toObservationsDataFrame(sqlContext)
-    val cmpslicedDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear"))
+    val cmpslicedDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "host" -> "172.31.20.20"))
     val cmpslicedDf3 = cmpslicedDf31.filter(cmpslicedDf31.col("timestamp")>=slicest3Timestamp).filter(cmpslicedDf31.col("timestamp")<=sliceet3Timestamp)
     if (InstantDFEqual(slicedDf3, cmpslicedDf3)) {
       writer.write("Slice InstantDF TEST passed (1 years)\n")
@@ -608,7 +608,7 @@ object Main {
     InstantDFAverage(slicedDf3, cmpslicedDf3, cnt, writer)
 
     val fsDf1 = Rdd.filterStartingBefore(slicest1).filterEndingAfter(sliceet1).slice(slicest1, sliceet1).fill("linear").toObservationsDataFrame(sqlContext)
-    val cmpfsDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "startingBefore" -> slicest1Str, "endingAfter" -> sliceet1Str))
+    val cmpfsDf11 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "startingBefore" -> slicest1Str, "endingAfter" -> sliceet1Str, "host" -> "172.31.20.20"))
     val cmpfsDf1 = cmpfsDf11.filter(cmpfsDf11.col("timestamp")>=slicest1Timestamp).filter(cmpfsDf11.col("timestamp")<=sliceet1Timestamp)
     if (InstantDFEqual(fsDf1, cmpfsDf1)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (10 years)\n")
@@ -620,7 +620,7 @@ object Main {
     InstantDFAverage(fsDf1, cmpfsDf1, cnt, writer)
 
     val fsDf2 = Rdd.filterStartingBefore(slicest2).filterEndingAfter(sliceet2).slice(slicest2, sliceet2).fill("linear").toObservationsDataFrame(sqlContext)
-    val cmpfsDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "startingBefore" -> slicest2Str, "endingAfter" -> sliceet2Str))
+    val cmpfsDf21 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "startingBefore" -> slicest2Str, "endingAfter" -> sliceet2Str, "host" -> "172.31.20.20"))
     val cmpfsDf2 = cmpfsDf21.filter(cmpfsDf21.col("timestamp")>=slicest2Timestamp).filter(cmpfsDf21.col("timestamp")<=sliceet2Timestamp)
     if (InstantDFEqual(fsDf2, cmpfsDf2)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (5 years)\n")
@@ -632,7 +632,7 @@ object Main {
     InstantDFAverage(fsDf2, cmpfsDf2, cnt, writer)
 
     val fsDf3 = Rdd.filterStartingBefore(slicest3).filterEndingAfter(sliceet3).slice(slicest3, sliceet3).fill("linear").toObservationsDataFrame(sqlContext)
-    val cmpfsDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "startingBefore" -> slicest3Str, "endingAfter" -> sliceet3Str))
+    val cmpfsDf31 = sqlContext.load("com.redislabs.provider.sql", Map("prefix" -> prefix, "type" -> "observation", "mapSeries" -> "linear", "startingBefore" -> slicest3Str, "endingAfter" -> sliceet3Str, "host" -> "172.31.20.20"))
     val cmpfsDf3 = cmpfsDf31.filter(cmpfsDf31.col("timestamp")>=slicest3Timestamp).filter(cmpfsDf31.col("timestamp")<=sliceet3Timestamp)
     if (InstantDFEqual(fsDf3, cmpfsDf3)) {
       writer.write("Filter by StartTime & EndTime then Slice InstantDF TEST passed (1 years)\n")
@@ -662,16 +662,16 @@ object Main {
     val writer8 = new PrintWriter(new File("/tmp/" + "/observation_Serialized.out"))
     val writer9 = new PrintWriter(new File("/tmp/" + "/observation_Tachyon.out"))
     (pos to pos).foreach{ i => {
-      ImportToRedisServer(path + "/TEST" + i.toString, "TEST" + i.toString, sc, ("127.0.0.1", 6379))
-      TEST(sc, writer1, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      TEST(sc, writer2, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      TEST(sc, writer3, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      InstantDFTEST(sc, writer4, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      InstantDFTEST(sc, writer5, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      InstantDFTEST(sc, writer6, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      ObservationDFTest(sc, writer7, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      ObservationDFTest(sc, writer8, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
-      ObservationDFTest(sc, writer9, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("127.0.0.1", 6379))
+      ImportToRedisServer(path + "/TEST" + i.toString, "TEST" + i.toString, sc, ("172.31.20.20", 6379))
+      TEST(sc, writer1, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      TEST(sc, writer2, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      TEST(sc, writer3, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      InstantDFTEST(sc, writer4, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      InstantDFTEST(sc, writer5, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      InstantDFTEST(sc, writer6, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      ObservationDFTest(sc, writer7, "disk", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      ObservationDFTest(sc, writer8, "SER", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
+      ObservationDFTest(sc, writer9, "Tachyon", 1, "TEST " + i.toString, path + "/TEST" + i.toString, "TEST" + i.toString, ("172.31.20.20", 6379))
     }}
 
     writer1.close
