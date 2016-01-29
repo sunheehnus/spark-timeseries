@@ -1,5 +1,6 @@
 package com.redislabs.provider.redis.rdd
 
+import java.io.{File, PrintWriter}
 import java.net.NetworkInterface
 import java.util
 
@@ -33,8 +34,11 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   }
   override def getPartitions: Array[Partition] = prev.partitions
 
+  var idx = -1
+
   override def compute(split: Partition, context: TaskContext): Iterator[(String, Vector[Double])] = {
     val partition: RedisPartition = split.asInstanceOf[RedisPartition]
+    idx = partition.index
     val sPos = partition.slots._1
     val ePos = partition.slots._2
     val nodes = partition.redisConfig.getNodesBySlots(sPos, ePos)
@@ -99,28 +103,63 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
     val st = index.first.getMillis
     val et = index.last.getMillis
+
+    var timeType: Long = 0
+    var timeStartTime: Long = 0
+    var timeEndTime: Long = 0
+    var timeFetch: Long = 0
+    var timeBuild: Long = 0
+    var sTime: Long = 0
+    var eTime: Long = 0
+    var msg: String = null
+
     val ips = NetworkInterface.getNetworkInterfaces.flatMap(_.getInetAddresses.map(_.getHostAddress)).toSet
-    groupKeysByNode(nodes, keys).flatMap {
+    val res = groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
           val (ip, port) = (x._1._1, x._1._2)
           val udsAddr = s"/tmp/redis_${port}.sock"
-          val jedis = if (ips.contains(ip) && new java.io.File(udsAddr).exists) new Jedis(udsAddr) else new Jedis(ip, port)
+          val jedis = if (ips.contains(ip) && new java.io.File(udsAddr).exists) {
+            msg = "UDS"
+            new Jedis(udsAddr)
+          } else {
+            msg = "IP:PORT"
+            new Jedis(ip, port)
+          }
+          sTime = System.currentTimeMillis
           val patternKeys = filterKeysByPattern(x._2, pattern)
+          eTime = System.currentTimeMillis
+          timeBuild += eTime - sTime
+
+          sTime = System.currentTimeMillis
           val zsetKeys = filterKeysByType(jedis, patternKeys, "zset")
+          eTime = System.currentTimeMillis
+          timeType += eTime - sTime
+
+          sTime = System.currentTimeMillis
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
+          eTime = System.currentTimeMillis
+          timeStartTime += eTime - sTime
+
+          sTime = System.currentTimeMillis
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
+          eTime = System.currentTimeMillis
+          timeEndTime += eTime - sTime
 
           if (endTimeKeys.size == 0) {
             jedis.close
             Iterator()
           }
           else {
+            sTime = System.currentTimeMillis
             val client = jedis.getClient
             endTimeKeys.foreach(client.zrangeByScoreWithScores(_, st, et))
 
             val results = client.getMany(endTimeKeys.length).map(BuilderFactory.STRING_LIST.build(_)).iterator
+            eTime = System.currentTimeMillis
+            timeFetch += eTime - sTime
 
+            sTime = System.currentTimeMillis
             val res = endTimeKeys.flatMap {
               x =>
               {
@@ -151,10 +190,20 @@ class RedisTimeSeriesRDD(prev: RDD[String],
               }
             }
             jedis.close
+            eTime = System.currentTimeMillis
+            timeBuild += eTime - sTime
             res
           }
         }
     }.iterator
+    val writer1 = new PrintWriter(new File("/tmp/filterType_partition#" + idx))
+    writer1.write(msg)
+    writer1.write(f"filterType_partition#${idx}%d: ${timeType}%d ms\n")
+    writer1.write(f"filterStartTime_partition#${idx}%d: ${timeStartTime}%d ms\n")
+    writer1.write(f"filterEndTime_partition#${idx}%d: ${timeEndTime}%d ms\n")
+    writer1.write(f"Fetch_partition#${idx}%d: ${timeFetch}%d ms\n")
+    writer1.write(f"Build_partition#${idx}%d: ${timeBuild}%d ms\n")
+    res
   }
   
   //def collectAsTimeSeries()
