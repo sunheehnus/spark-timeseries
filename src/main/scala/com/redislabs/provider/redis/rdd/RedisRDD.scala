@@ -1,25 +1,22 @@
 package com.redislabs.provider.redis.rdd
 
-import java.net.InetAddress
+import java.net.NetworkInterface
 import java.util
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark._
+
 import redis.clients.jedis._
 import redis.clients.util.JedisClusterCRC16
 
 import scala.collection.JavaConversions._
+
 import com.redislabs.provider.redis.partitioner._
 import com.redislabs.provider.RedisConfig
-import com.redislabs.provider.redis._
 
 import com.cloudera.sparkts._
-import com.cloudera.sparkts.DateTimeIndex._
-
 import com.github.nscala_time.time.Imports._
-
 import breeze.linalg._
-import breeze.stats._
 
 import org.joda.time.DateTimeZone.UTC
 
@@ -81,54 +78,81 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     (keys).zip(dts).filter(x => (x._2 >= et)).map(x => x._1)
   }
 
+  private def filterKeysByPattern(keys: Array[String], pattern: String) = {
+    keys.filter{
+      key => {
+        val prefixStartPos = key.indexOf("_RedisTS_") + 9
+        val prefixEndPos = key.indexOf("_RedisTS_", prefixStartPos)
+        if (prefixEndPos == -1)
+          false
+        else {
+          val prefix = key.substring(prefixStartPos, prefixEndPos)
+          if (pattern == null)
+            true
+          else
+            key.substring(prefixEndPos + 9).split(",").map(prefix + _).exists(_.matches(pattern))
+        }
+      }
+    }
+  }
+
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
     val st = index.first.getMillis
     val et = index.last.getMillis
+    val ips = NetworkInterface.getNetworkInterfaces.flatMap(_.getInetAddresses.map(_.getHostAddress)).toSet
     groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
-          val jedis = new Jedis(x._1._1, x._1._2)
-          val zsetKeys = filterKeysByType(jedis, x._2, "zset")
+          val (ip, port) = (x._1._1, x._1._2)
+          val udsAddr = s"/tmp/redis_${port}.sock"
+          val jedis = if (ips.contains(ip) && new java.io.File(udsAddr).exists) new Jedis(udsAddr) else new Jedis(ip, port)
+          val patternKeys = filterKeysByPattern(x._2, pattern)
+          val zsetKeys = filterKeysByType(jedis, patternKeys, "zset")
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
           val endTimeKeys = filterKeysByEndTime(jedis, startTimeKeys, endTime)
-          val client = new Client(x._1._1, x._1._2)
-          val res = endTimeKeys.flatMap {
-            x =>
+
+          if (endTimeKeys.size == 0) {
+            jedis.close
+            Iterator()
+          }
+          else {
+            val client = jedis.getClient
+            endTimeKeys.foreach(client.zrangeByScoreWithScores(_, st, et))
+
+            val results = client.getMany(endTimeKeys.length).map(BuilderFactory.STRING_LIST.build(_)).iterator
+
+            val res = endTimeKeys.flatMap {
+              x =>
               {
                 val prefixStartPos = x.indexOf("_RedisTS_") + 9
                 val prefixEndPos = x.indexOf("_RedisTS_", prefixStartPos)
                 val prefix = x.substring(prefixStartPos, prefixEndPos)
                 val cols = x.substring(prefixEndPos + 9).split(",").map(prefix + _)
-                
+
                 val keysWithCols = if (pattern != null) cols.zipWithIndex.filter(x => x._1.matches(pattern)) else cols.zipWithIndex
                 val (selectedKeys, selectedCols) = keysWithCols.unzip
-                
-                if (selectedCols.size != 0) {
-                  val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
-                  for (array <- arrays) java.util.Arrays.fill(array, Double.NaN)
 
-                  client.zrangeByScoreWithScores(x, st, et)
-                  val it = client.getMultiBulkReply.iterator
-                  while (it.hasNext) {
-                    val elem = it.next
-                    val pos = index.locAtDateTime(it.next.toLong)
-                    val values = elem.substring(elem.indexOf('_') + 1).split(",")
-                    for (i <- 0 until selectedCols.size) arrays(i)(pos) = values(selectedCols(i)).toDouble
-                  }
-                  if (f == null) {
-                    for (i <- 0 until selectedCols.size) yield (selectedKeys(i), new DenseVector(arrays(i)))
-                  }
-                  else {
-                    for (i <- 0 until selectedCols.size) yield (selectedKeys(i), f(new DenseVector(arrays(i))))
-                  }
+                val arrays = Array.ofDim[Double](keysWithCols.size, index.size)
+                for (array <- arrays) java.util.Arrays.fill(array, Double.NaN)
+
+                val it = results.next.iterator
+                while (it.hasNext) {
+                  val elem = it.next
+                  val pos = index.locAtDateTime(it.next.toLong)
+                  val values = elem.substring(elem.indexOf('_') + 1).split(",")
+                  for (i <- 0 until selectedCols.size) arrays(i)(pos) = values(selectedCols(i)).toDouble
                 }
-                else
-                  Iterator()
+                if (f == null) {
+                  for (i <- 0 until selectedCols.size) yield (selectedKeys(i), new DenseVector(arrays(i)))
+                }
+                else {
+                  for (i <- 0 until selectedCols.size) yield (selectedKeys(i), f(new DenseVector(arrays(i))))
+                }
               }
+            }
+            jedis.close
+            res
           }
-          jedis.close
-          client.close
-          res
         }
     }.iterator
   }
@@ -291,7 +315,7 @@ trait Keys {
     do {
       val scan = jedis.scan(cursor, params)
       keys.addAll(scan.getResult)
-      cursor = scan.getStringCursor
+      cursor = scan.getCursor
     } while (cursor != "0")
     keys
   }
