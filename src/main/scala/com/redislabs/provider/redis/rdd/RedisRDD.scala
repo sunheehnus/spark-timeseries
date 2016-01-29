@@ -1,5 +1,6 @@
 package com.redislabs.provider.redis.rdd
 
+import java.net.NetworkInterface
 import java.util
 
 import org.apache.spark.rdd.RDD
@@ -98,10 +99,13 @@ class RedisTimeSeriesRDD(prev: RDD[String],
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
     val st = index.first.getMillis
     val et = index.last.getMillis
+    val ips = NetworkInterface.getNetworkInterfaces.flatMap(_.getInetAddresses.map(_.getHostAddress)).toSet
     groupKeysByNode(nodes, keys).flatMap {
       x =>
         {
-          val jedis = new Jedis(x._1._1, x._1._2)
+          val (ip, port) = (x._1._1, x._1._2)
+          val udsAddr = s"/tmp/redis_${port}.sock"
+          val jedis = if (ips.contains(ip) && new java.io.File(udsAddr).exists) new Jedis(udsAddr) else new Jedis(ip, port)
           val patternKeys = filterKeysByPattern(x._2, pattern)
           val zsetKeys = filterKeysByType(jedis, patternKeys, "zset")
           val startTimeKeys = filterKeysByStartTime(jedis, zsetKeys, startTime)
@@ -115,7 +119,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
             val client = jedis.getClient
             endTimeKeys.foreach(client.zrangeByScoreWithScores(_, st, et))
 
-            val results = client.getAll().map(BuilderFactory.STRING_LIST.build(_)).iterator
+            val results = client.getMany(endTimeKeys.length).map(BuilderFactory.STRING_LIST.build(_)).iterator
 
             val res = endTimeKeys.flatMap {
               x =>
@@ -311,7 +315,7 @@ trait Keys {
     do {
       val scan = jedis.scan(cursor, params)
       keys.addAll(scan.getResult)
-      cursor = scan.getStringCursor
+      cursor = scan.getCursor
     } while (cursor != "0")
     keys
   }
