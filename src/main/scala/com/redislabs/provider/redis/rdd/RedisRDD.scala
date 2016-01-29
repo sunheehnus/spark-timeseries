@@ -203,6 +203,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     writer1.write(f"filterEndTime_partition#${idx}%d: ${timeEndTime}%d ms\n")
     writer1.write(f"Fetch_partition#${idx}%d: ${timeFetch}%d ms\n")
     writer1.write(f"Build_partition#${idx}%d: ${timeBuild}%d ms\n")
+    writer1.close
     res
   }
   
