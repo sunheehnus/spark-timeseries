@@ -119,7 +119,7 @@ class RedisTimeSeriesRDD(prev: RDD[String],
         {
           val (ip, port) = (x._1._1, x._1._2)
           val udsAddr = s"/tmp/redis_${port}.sock"
-          val jedis = if (ips.contains(ip) && new java.io.File(udsAddr).exists) {
+          val jedis = if (false && ips.contains(ip) && new java.io.File(udsAddr).exists) {
             msg = "UDS"
             new Jedis(udsAddr)
           } else {
