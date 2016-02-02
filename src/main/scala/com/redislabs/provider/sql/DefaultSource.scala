@@ -16,6 +16,7 @@ import java.sql.Timestamp
 import com.redislabs.provider.redis._
 
 class FilterParser(filters: Array[Filter], fieldName: Map[String, String]) {
+  /* divide filters by name */
   private val filtersByAttr: Map[String, Array[Filter]] = filters.map(f => (getAttr(f), f)).groupBy(_._1).mapValues(a => a.map(p => p._2))
   def getStartTime: String = {
     var startTime: Timestamp = new Timestamp(90, 10, 14, 0, 0, 0, 0)
@@ -51,6 +52,7 @@ class FilterParser(filters: Array[Filter], fieldName: Map[String, String]) {
     val freq = getFrequency(frequency)
     uniform(new DateTime(start, UTC), new DateTime(end, UTC), freq)
   }
+  /* get filter's attr */
   private def getAttr(f: Filter): String = {
     f match {
       case EqualTo(attribute, value) => attribute

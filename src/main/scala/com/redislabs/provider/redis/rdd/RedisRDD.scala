@@ -20,6 +20,27 @@ import breeze.linalg._
 
 import org.joda.time.DateTimeZone.UTC
 
+/**
+ * It is equal to TimeSeriesRDD, and at the same time make use of Redis' sorted set to build
+ * more quickly. It encapsulates all the information needed to generate its elements, its
+ * partitions are the same as RedisKeysRDD's partitioned by Redis hash slots, if a Redis
+ * node is up on a Spark worker, the related partition(has the same slots as the Redis node)
+ * will be more likely to run on that worker.
+ * In RedisTimeSeriesRDD, we can use:
+ *   filterKeys: which use a regex to filter the cols we are interested in, it is more powerful
+ *               than endsWith
+ *   filterStartingBefore: filter the cols whose start time is before what we want
+ *   filterEndingAfter: filter the cols whose end time is after what we want
+ *   slice: build the sliced RedisTimeSeriesRDD
+ * All the above functions make use of the of Redis' sorted set to speed up.
+ *
+ * If future transforms are needed, we can just transform RedisTimeSeriesRDD to TimeSeriesRDD
+ * by toTimeSeriesRDD and make use of the functions the TimeSeriesRDD already implemented,
+ * there is no need to reimplement the functions TimeSeriesRDD already provided.
+ *
+ * @param prev      The RedisKeysRDD
+ * @param index     The DateTimeIndex shared by all the time series.
+ */
 class RedisTimeSeriesRDD(prev: RDD[String],
                          index: DateTimeIndex,
                          pattern: String = null,
@@ -28,9 +49,15 @@ class RedisTimeSeriesRDD(prev: RDD[String],
                          f: (Vector[Double]) => Vector[Double] = null)
     extends RDD[(String, Vector[Double])](prev) with Keys {
 
+  /**
+   * Transform RedisTimeSeriesRDD to TimeSeriesRDD
+   * @return TimeSeriesRDD
+   */
   def toTimeSeriesRDD(): TimeSeriesRDD = {
     new TimeSeriesRDD(index, this)
   }
+
+  /* The same partition as RedisKeysRDD's */
   override def getPartitions: Array[Partition] = prev.partitions
 
   override def compute(split: Partition, context: TaskContext): Iterator[(String, Vector[Double])] = {
@@ -78,6 +105,11 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     (keys).zip(dts).filter(x => (x._2 >= et)).map(x => x._1)
   }
 
+  /**
+   * @param keys
+   * @param pattern which is a regex
+   * @return keys whose start_time <= startTime
+   */
   private def filterKeysByPattern(keys: Array[String], pattern: String) = {
     keys.filter{
       key => {
@@ -96,6 +128,11 @@ class RedisTimeSeriesRDD(prev: RDD[String],
     }
   }
 
+  /**
+   * @param nodes list of nodes(IP:String, port:Int, index:Int, range:Int, startSlot:Int, endSlot:Int)
+   * @param keys the name of sorted sets' from whom we want to fetch timeseries data
+   * @return timeseriesdata iterator of timeseriesdata(name:String, data:Vector[Double])
+   */
   def fetchTimeSeriesData(nodes: Array[(String, Int, Int, Int, Int, Int)], keys: Iterator[String]): Iterator[(String, Vector[Double])] = {
     val st = index.first.getMillis
     val et = index.last.getMillis
@@ -156,55 +193,64 @@ class RedisTimeSeriesRDD(prev: RDD[String],
         }
     }.iterator
   }
-  
-  //def collectAsTimeSeries()
-  
-  //def findSeries(key: String)
-  
-  //def differences(n: Int): RedisTimeSeriesRDD = {
-    //mapSeries(vec => diff(vec.toDenseVector, n), index.islice(n, index.size))
-  //}
-  
-  //def quotients(n: Int): RedisTimeSeriesRDD = {
-    //mapSeries(UnivariateTimeSeries.quotients(_, n), index.islice(n, index.size))
-  //}
-  
-  //def returnRates(): RedisTimeSeriesRDD = {
-    //mapSeries(vec => UnivariateTimeSeries.price2ret(vec, 1), index.islice(1, index.size))
-  //}
+
+  /**
+   * @param keyPattern the regex we use to filter timeseries data by its name
+   * @return RedisTimeSeriesRDD the filtered RedisTimeSeriesRDD
+   */
   def filterKeys(keyPattern: String): RedisTimeSeriesRDD = {
     new RedisTimeSeriesRDD(prev, index, keyPattern, startTime, endTime, f)
   }
-  
+
+  /**
+   * @param dt the datetime we use to filter timeseries data whose start time is after dt
+   * @return RedisTimeSeriesRDD the filtered RedisTimeSeriesRDD
+   */
   def filterStartingBefore(dt: DateTime): RedisTimeSeriesRDD = {
     new RedisTimeSeriesRDD(prev, index, pattern, dt, endTime, f)
   }
+
+  /**
+   * @param dt the datetime we use to filter timeseries data whose end time is after dt
+   * @return RedisTimeSeriesRDD the filtered RedisTimeSeriesRDD
+   */
   def filterEndingAfter(dt: DateTime): RedisTimeSeriesRDD = {
     new RedisTimeSeriesRDD(prev, index, pattern, startTime, dt, f)
   }
-  
+
+  /**
+   * @param start the datatime we use to slice
+   * @param end the datatime we use to slice
+   * @return RedisTimeSeriesRDD the sliced RedisTimeSeriesRDD
+   */
   def slice(start: DateTime, end: DateTime): RedisTimeSeriesRDD = {
-    new RedisTimeSeriesRDD(prev, index.slice(start, end), pattern, startTime, endTime, f) 
+    new RedisTimeSeriesRDD(prev, index.slice(start, end), pattern, startTime, endTime, f)
   }
+
+  /**
+   * @param start the datatime which is of Long type we use to slice
+   * @param end the datatime which is of Long type we use to slice
+   * @return RedisTimeSeriesRDD the sliced RedisTimeSeriesRDD
+   */
   def slice(start: Long, end: Long): RedisTimeSeriesRDD = {
     slice(new DateTime(start, UTC), new DateTime(end, UTC))
   }
-  
+
+  /**
+   * @param method the name of the method we use to fill in missing timeseries data
+   * @return RedisTimeSeriesRDD the sliced RedisTimeSeriesRDD
+   */
   def fill(method: String): RedisTimeSeriesRDD = {
     mapSeries(UnivariateTimeSeries.fillts(_, method))
   }
-  
+
   def mapSeries[U](f: (Vector[Double]) => Vector[Double]): RedisTimeSeriesRDD = {
     new RedisTimeSeriesRDD(prev, index, pattern, startTime, endTime, f)
   }
-  
+
   def mapSeries[U](f: (Vector[Double]) => Vector[Double], index: DateTimeIndex): RedisTimeSeriesRDD = {
     new RedisTimeSeriesRDD(prev, index, pattern, startTime, endTime, f)
   }
-  
-  //def seriesStats(): RDD[StatCounter] = {
-    //map(kt => new StatCounter(kt._2.valuesIterator))
-  //}
 }
 
 class RedisKeysRDD(sc: SparkContext,
@@ -213,11 +259,19 @@ class RedisKeysRDD(sc: SparkContext,
                    val partitionNum: Int = 3)
     extends RDD[String](sc, Seq.empty) with Logging with Keys {
 
-
+  /**
+   * @param split a partition of the RedisKeysRDD
+   * @return Addresses which are the preferred locations for the partition
+   */
   override protected def getPreferredLocations(split: Partition): Seq[String] = {
     Seq(split.asInstanceOf[RedisPartition].redisConfig.ip)
   }
 
+  /**
+   * @return hosts
+   * hosts(ip:String, port:Int, startSlot:Int, endSlot:Int) are generated by the redis-cluster's hash
+   * tragedy and partitionNum to divied the cluster to partitionNum
+   */
   private def scaleHostsWithPartitionNum(): Seq[(String, Int, Int, Int)] = {
     def split(host: (String, Int, Int, Int), cnt: Int) = {
       val start = host._3
@@ -257,6 +311,7 @@ class RedisKeysRDD(sc: SparkContext,
       }
     }
   }
+
   override protected def getPartitions: Array[Partition] = {
     val hosts = scaleHostsWithPartitionNum()
     (0 until partitionNum).map(i => {
@@ -273,7 +328,11 @@ class RedisKeysRDD(sc: SparkContext,
     val nodes = partition.redisConfig.getNodesBySlots(sPos, ePos)
     getKeys(nodes, sPos, ePos, keyPattern).iterator;
   }
-  
+
+  /**
+   * @param index datatimeindex ts-data in whose time range we care about
+   * @return RedisTimeSeriesRDD
+   */
   def getRedisTimeSeriesRDD(index: DateTimeIndex) = {
     new RedisTimeSeriesRDD(this, index)
   }
